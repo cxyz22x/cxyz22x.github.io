@@ -1,0 +1,231 @@
+IVE = cached.rows;
+        return cached.rows;
+      }
+    } catch(e){}
+    const parts = await Promise.all(WEST_FEEDS.map(function(pair){
+      return fetch(pair[1]).then(function(r){ if (!r.ok) throw new Error(pair[0]); return r.text(); }).then(function(text){ return parseWestM3U(text, pair[0]); }).catch(function(){ return []; });
+    }));
+    const rows = bestWest([].concat.apply([], parts));
+    if (rows.length){
+      window.__LIVE = rows;
+      try { localStorage.setItem("goar-west-v2", JSON.stringify({ at: Date.now(), rows: rows })); } catch(e){}
+    }
+    return window.__LIVE || [];
+  })();
+  return westPromise;
+}
+function liveCatalog(){
+  if (window.__LIVE) return window.__LIVE;
+  const el = document.getElementById("goar-live");
+  window.__LIVE = el ? JSON.parse(el.textContent) : [];
+  return window.__LIVE;
+}
+function liveCountries(rows){
+  const counts = {};
+  rows.forEach(function(ch){ counts[ch.c] = (counts[ch.c] || 0) + 1; });
+  return Object.keys(counts).filter(function(c){ return counts[c] >= 8; }).sort(function(a,b){ return counts[b]-counts[a]; });
+}
+function liveArtFallback(img){
+  if (!img || !img.parentNode || img.dataset.gone) return;
+  img.dataset.gone = "1";
+  const card = img.closest(".live-card");
+  const raw = card && card.querySelector("b") ? card.querySelector("b").textContent : "";
+  const mark = raw.replace(/\s*\([^)]*\)/g, "").trim().slice(0, 2).toUpperCase() || "TV";
+  const ph = document.createElement("div");
+  ph.className = "live-ph";
+  ph.textContent = mark;
+  img.replaceWith(ph);
+}
+function paintLive(){
+  const all = liveCatalog();
+  const q = liveQuery.trim().toLowerCase();
+  const rows = all.filter(function(ch){
+    if (liveCountry !== "All" && ch.c !== liveCountry) return false;
+    if (!q) return true;
+    return (ch.n + " " + ch.c + " " + (ch.g || "")).toLowerCase().indexOf(q) >= 0;
+  }).sort(function(a,b){ return (b.r||0)-(a.r||0) || a.n.localeCompare(b.n); });
+  const box = document.getElementById("liveGrid");
+  const meta = document.getElementById("liveMeta");
+  if (meta) meta.textContent = rows.length + " with artwork" + (liveCountry === "All" ? "" : " · " + liveCountry);
+  const slice = rows.slice(0, liveLimit);
+  if (!slice.length){ box.innerHTML = '<p class="live-empty">Nothing in this filter.</p>'; return; }
+  box.innerHTML = slice.map(function(ch, i){
+    const res = ch.r ? (ch.r + "p") : "Live";
+    const name = String(ch.n).replace(/&/g,"&").replace(/</g,"<");
+    const sub = String(ch.c + " · " + (ch.g || "Live")).replace(/&/g,"&").replace(/</g,"<");
+    return '<button type="button" class="live-card" data-i="' + i + '"><img src="' + ch.i + '" alt="" loading="lazy" referrerpolicy="no-referrer"><b>' + name + '</b><span>' + sub + '</span><em>' + res + '</em></button>';
+  }).join("");
+  box.querySelectorAll(".live-card").forEach(function(btn){
+    const img = btn.querySelector("img");
+    img.onerror = function(){ liveArtFallback(img); };
+    img.onload = function(){
+      if (!img.naturalWidth || (img.naturalWidth === 161 && img.naturalHeight === 81)) liveArtFallback(img);
+    };
+    if (img.complete) img.onload();
+    btn.onclick = function(){ playWest(slice[Number(btn.getAttribute("data-i"))]); };
+  });
+  let more = document.getElementById("liveMore");
+  if (rows.length > slice.length){
+    if (!more){
+      more = document.createElement("button");
+      more.id = "liveMore";
+      more.type = "button";
+      more.className = "live-more";
+      box.parentNode.appendChild(more);
+    }
+    more.hidden = false;
+    more.textContent = "Show more · " + (rows.length - slice.length) + " left";
+    more.onclick = function(){ liveLimit += 80; paintLive(); };
+  } else if (more) more.hidden = true;
+}
+function buildWestLive(){
+  heroGen++;
+  const main = document.getElementById("mainContent");
+  exitProvMode();
+  const hero = document.getElementById("hero");
+  hero.classList.add("hero-short");
+  hero.style.display = "";
+  hero.style.backgroundImage = "linear-gradient(120deg,#3a1020,#07070c 55%)";
+  const all = liveCatalog();
+  if (!all.length){
+    hero.innerHTML = '<div class="hero-content"><div class="hero-eyebrow">LIVE</div><div class="hero-title">Loading channels</div><div class="hero-overview">Pulling the current US, UK, Australia, Canada, Ireland, and New Zealand list.</div></div>';
+    main.innerHTML = "";
+    if (hero.dataset.westWait === "1"){
+      hero.innerHTML = '<div class="hero-content"><div class="hero-eyebrow">LIVE</div><div class="hero-title">List unavailable</div><div class="hero-overview">The channel list did not load. Open Live again in a moment.</div></div>';
+      return;
+    }
+    hero.dataset.westWait = "1";
+    refreshWestLive().then(function(){
+      if (activeTab === "live") buildWestLive();
+    });
+    return;
+  }
+  hero.dataset.westWait = "";
+  const hd = all.filter(function(ch){ return ch.r >= 720; }).length;
+  hero.innerHTML = '<div class="hero-content"><div class="hero-eyebrow">LIVE</div><div class="hero-title">' + all.length + ' channels</div><div class="hero-overview">' + hd + ' are 720p or 1080p. Logos come from the live list, which refreshes itself. Religious and shop feeds stay out.</div></div>';
+  main.innerHTML = "";
+  const sec = document.createElement("div");
+  sec.className = "section";
+  const countries = liveCountries(all);
+  sec.innerHTML = '<div class="live-bar"><input id="liveSearch" placeholder="Search channels" autocomplete="off"><div class="gchips" id="liveCats"></div></div><p id="liveMeta" class="live-meta"></p><div id="liveGrid" class="live-grid"></div>';
+  main.appendChild(sec);
+  const cats = document.getElementById("liveCats");
+  cats.innerHTML = ["All"].concat(countries).map(function(c){
+    return '<button type="button" class="gchip' + (c===liveCountry?" on":"") + '" data-c="' + c + '">' + c + '</button>';
+  }).join("");
+  cats.querySelectorAll("[data-c]").forEach(function(btn){
+    btn.onclick = function(){
+      liveCountry = btn.getAttribute("data-c");
+      liveLimit = 80;
+      cats.querySelectorAll(".gchip").forEach(function(x){ x.classList.toggle("on", x===btn); });
+      paintLive();
+    };
+  });
+  document.getElementById("liveSearch").addEventListener("input", function(e){
+    liveQuery = e.target.value || "";
+    liveLimit = 80;
+    paintLive();
+  });
+  paintLive();
+}
+function playWest(ch){
+  playerToken++;
+  const overlay = document.getElementById("playerOverlay");
+  overlay.classList.add("open");
+  document.body.style.overflow = "hidden";
+  document.getElementById("playerTitle").textContent = ch.n;
+  document.getElementById("playerTag").textContent = "LIVE";
+  document.getElementById("playerPicker").innerHTML = qualitySelectHtml();
+  const qsel = document.getElementById("selQuality");
+  if (qsel) qsel.onchange = function(){
+    setQualityPref(qsel.value);
+    if (playerState.hls) applyHlsQuality(playerState.hls);
+  };
+  const src = { name: ch.n, url: ch.u, format: "hls" };
+  playerState.sources = [src];
+  playerState.sourceName = ch.n;
+  playerState.title = ch.n;
+  setPlayerStatus("Starting " + ch.n + "…");
+  playSource(src).catch(function(e){ setPlayerStatus(e.message || String(e), true); });
+}
+
+/* ================= NAV ================= */
+function setActiveTab(tab){
+  activeTab = tab;
+  document.querySelectorAll("nav a[data-tab]").forEach(x => x.classList.toggle("active", x.dataset.tab === tab));
+  document.querySelectorAll(".pill-item[data-tab]").forEach(x => x.classList.toggle("active", x.dataset.tab === tab));
+  document.getElementById("gridView").classList.remove("open");
+  document.getElementById("hero").style.display = "";
+  document.getElementById("mainContent").style.display = "";
+}
+function routeTo(tab){
+  const gridOpen = document.getElementById("gridView").classList.contains("open");
+  if (activeTab === tab && !document.body.classList.contains("prov-mode") && !gridOpen) return;
+  setActiveTab(tab);
+  const main = document.getElementById("mainContent");
+  main.style.transition = "opacity .15s";
+  main.style.opacity = "0.3";
+  setTimeout(() => {
+    if (tab==="movie") buildMovieTab();
+    else if (tab==="tv") buildTVTab();
+    else if (tab==="anime") buildAnimeTab();
+    else if (tab==="kids") buildKidsTab();
+    else if (tab==="music") buildMusicTab();
+    else if (tab==="live") buildWestLive();
+    else if (tab==="hubs") buildHubsTab();
+    else if (tab==="list") buildListTab();
+    else buildHome();
+    main.style.opacity = "1";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, 60);
+}
+document.querySelectorAll("nav a[data-tab]").forEach(a => a.addEventListener("click", () => routeTo(a.dataset.tab)));
+
+async function buildListTab(){
+  const main = document.getElementById("mainContent"); exitProvMode();
+  document.getElementById("hero").style.display = "none";
+  main.innerHTML = "";
+  const sec = document.createElement("div");
+  sec.className = "section";
+  sec.innerHTML = '<div class="section-head"><div><h2>My List</h2><p>' + watchlist.length + ' saved title' + (watchlist.length===1?'':'s') + '</p></div></div>';
+  const gridWrap = document.createElement("div");
+  gridWrap.className = "grid";
+  gridWrap.style.padding = "0 5vw";
+  gridWrap.style.display = "grid";
+  gridWrap.style.gridTemplateColumns = "repeat(auto-fill, minmax(140px, 1fr))";
+  gridWrap.style.gap = "16px";
+  sec.appendChild(gridWrap);
+  main.appendChild(sec);
+  if (!watchlist.length){
+    gridWrap.outerHTML = '<div class="loader" style="padding:60px 5vw;">Nothing saved yet. Tap the ★ on any card or in a title\'s detail view.</div>';
+    return;
+  }
+  watchlist.forEach((w,i) => {
+    const item = { id:w.id, title:w.title, name:w.title, poster_path:w.poster, vote_average:w.rating, release_date:w.date, _forceType:w.type };
+    gridWrap.appendChild(card(item, {}, i));
+  });
+}
+
+const PILL_ICONS = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+  movie: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M17 9h4M3 15h4M17 15h4"/></svg>',
+  tv: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 3l4 3 4-3"/></svg>',
+  anime: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg>',
+  kids: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>',
+  music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+  live: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M5.5 12a6.5 6.5 0 0113 0M2 12a10 10 0 0120 0"/></svg>',
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>'
+};
+function buildPillNav(){
+  const pn = document.getElementById("pillNav");
+  if (!pn) return;
+  const items = [
+    {tab:"home", label:"Home"}, {tab:"movie", label:"Movies"}, {tab:"tv", label:"TV"},
+    {tab:"anime", label:"Anime"}, {tab:"kids", label:"Kids"}, {tab:"music", label:"Music"},
+    {tab:"live", label:"Live"}, {tab:"list", label:"List"}
+  ];
+  pn.innerHTML = items.map(it =>
+    '<div class="pill-item ' + (it.tab==="home"?"active":"") + ' ' + (it.tab==="music"?"music":"") + ' ' + (it.tab==="kids"?"kids":"") + ' ' + (it.tab==="list"?"list":"") + '" data-tab="' + it.tab + '">' +
+    PILL_ICONS[it.tab] + '<span>' + it.label + '</span></div>'
+  ).join("");
+  pn.querySelectorAll(".pill-item[data-tab]").forEach(el => el.addEventListener("click", () => routeTo(el.d
