@@ -1,0 +1,200 @@
+er.appendChild(sec);
+  }
+  for (const p of providers){
+    const el = document.getElementById("hub_" + p.id);
+    if (!el) continue;
+    el.innerHTML = "";
+    for (let i=0;i<4;i++){ const sk = document.createElement("div"); sk.className = "skel"; el.appendChild(sk); }
+    try {
+      const design = getProviderDesign(p.name);
+      const cfg = { ...DEFAULT_PROVIDER_CONTENT, ...(PROVIDER_CONTENT[design.key] || {}) };
+      const [m,t] = await Promise.all([provDiscoverSafe(p.id, REGION, "movie", { ...cfg, sortBy: "popularity.desc" }), provDiscoverSafe(p.id, REGION, "tv", { ...cfg, sortBy: "popularity.desc" })]);
+      railInto(el, mergeTwo(m, t, cmpPop).slice(0, 16));
+    } catch(e){ el.innerHTML = '<div class="loader err small">Couldn\'t load ' + p.name + '.</div>'; }
+  }
+}
+
+/* ================= GRID VIEWS ================= */
+function openGrid(title){
+  document.getElementById("hero").style.display = "none";
+  document.getElementById("mainContent").style.display = "none";
+  document.getElementById("gridView").classList.add("open");
+  document.getElementById("gridTitle").textContent = title;
+  const grid = document.getElementById("gridGrid");
+  grid.innerHTML = '<div class="loader">Loading…</div>';
+  return grid;
+}
+document.getElementById("gridBack").onclick = () => {
+  document.getElementById("gridView").classList.remove("open");
+  document.getElementById("hero").style.display = "";
+  document.getElementById("mainContent").style.display = "";
+};
+async function showGenreGrid(genre, scope){
+  const grid = openGrid(genre.name);
+  try {
+    let merged = [];
+    if (scope==="movie" || scope==="all"){ const m = await tmdb("/discover/movie",{with_genres:genre.id, sort_by:"popularity.desc", include_adult:false}); merged.push(...m.results.map(x=>({...x,media_type:"movie"}))); }
+    if (scope==="tv" || scope==="all"){ const t = await tmdb("/discover/tv",{with_genres:genre.id, sort_by:"popularity.desc", include_adult:false}); merged.push(...t.results.map(x=>({...x,media_type:"tv"}))); }
+    merged = mergeTwo(merged.filter(x=>x.media_type==="movie"), merged.filter(x=>x.media_type==="tv"), cmpPop);
+    grid.innerHTML=""; merged.forEach((i,idx)=>grid.appendChild(card(i, {}, idx)));
+  } catch(e){ grid.innerHTML = '<div class="loader err">Couldn\'t load.</div>'; }
+}
+async function showAnimeGenreGrid(g){
+  const grid = openGrid("Anime · " + g.name);
+  try { const items = await animeDiscover({with_genres:"16," + g.id, sort_by:"popularity.desc"}); grid.innerHTML=""; items.forEach((i,idx)=>grid.appendChild(card(i, {}, idx))); }
+  catch(e){ grid.innerHTML = '<div class="loader err">Couldn\'t load.</div>'; }
+}
+async function showAnime(kind){
+  const titles = {new:"New Anime Releases", popular:"Popular Anime", top:"Top Rated Anime", movies:"Anime Movies", airing:"Airing Anime"};
+  const grid = openGrid(titles[kind]);
+  try {
+    let items;
+    if (kind==="new") items = await animeDiscover({sort_by:"first_air_date.desc","first_air_date.lte":TODAY,"vote_count.gte":5});
+    else if (kind==="top") items = await animeDiscover({sort_by:"vote_average.desc","vote_count.gte":100});
+    else if (kind==="movies") items = await animeDiscover({sort_by:"popularity.desc"},"movie");
+    else if (kind==="airing") items = await animeDiscover({sort_by:"popularity.desc","first_air_date.lte":TODAY,"vote_count.gte":10},"tv");
+    else items = await animeDiscover({sort_by:"popularity.desc"});
+    grid.innerHTML=""; items.forEach((i,idx)=>grid.appendChild(card(i, {}, idx)));
+  } catch(e){ grid.innerHTML = '<div class="loader err">Couldn\'t load.</div>'; }
+}
+async function showSpecial(kind){
+  const titles = {
+    trending:"Trending Now", new:"New Releases", toprated:"Top Rated",
+    new_movie:"New Movie Releases", trend_movie:"Trending Movies", top_movie:"Top Rated Movies",
+    now_movie:"In Theaters", upcoming_movie:"Coming Soon", pop_movie:"Popular Movies",
+    new_tv:"New TV Releases", trend_tv:"Trending TV Shows", top_tv:"Top Rated TV Shows",
+    airing_tv:"Airing Today", onair_tv:"On The Air", pop_tv:"Popular TV Shows"
+  };
+  const grid = openGrid(titles[kind] || kind);
+  try {
+    let items = [];
+    if (kind==="trending") items = (await tmdb("/trending/all/week")).results;
+    else if (kind==="new"){
+      const [m,t] = await Promise.all([
+        tmdb("/discover/movie",{sort_by:"primary_release_date.desc","primary_release_date.lte":TODAY,"vote_count.gte":30,include_adult:false}),
+        tmdb("/discover/tv",{sort_by:"first_air_date.desc","first_air_date.lte":TODAY,"vote_count.gte":15,include_adult:false})
+      ]);
+      items = mergeTwo(m.results.map(x=>({...x,media_type:"movie"})), t.results.map(x=>({...x,media_type:"tv"})),cmpDate);
+    } else if (kind==="toprated"){
+      const [m,t] = await Promise.all([tmdb("/movie/top_rated"), tmdb("/tv/top_rated")]);
+      items = mergeTwo(m.results.map(x=>({...x,media_type:"movie"})), t.results.map(x=>({...x,media_type:"tv"})),cmpRating);
+    }
+    else if (kind==="new_movie") items = (await tmdb("/discover/movie",{sort_by:"primary_release_date.desc","primary_release_date.lte":TODAY,"vote_count.gte":30,include_adult:false})).results.map(x=>({...x,media_type:"movie"}));
+    else if (kind==="trend_movie") items = (await tmdb("/trending/movie/week")).results.map(x=>({...x,media_type:"movie"}));
+    else if (kind==="top_movie") items = (await tmdb("/movie/top_rated")).results.map(x=>({...x,media_type:"movie"}));
+    else if (kind==="now_movie") items = (await tmdb("/movie/now_playing",{region:REGION})).results.map(x=>({...x,media_type:"movie"}));
+    else if (kind==="upcoming_movie") items = (await tmdb("/movie/upcoming",{region:REGION})).results.map(x=>({...x,media_type:"movie"}));
+    else if (kind==="pop_movie") items = (await tmdb("/movie/popular")).results.map(x=>({...x,media_type:"movie"}));
+    else if (kind==="new_tv") items = (await tmdb("/discover/tv",{sort_by:"first_air_date.desc","first_air_date.lte":TODAY,"vote_count.gte":15,include_adult:false})).results.map(x=>({...x,media_type:"tv"}));
+    else if (kind==="trend_tv") items = (await tmdb("/trending/tv/week")).results.map(x=>({...x,media_type:"tv"}));
+    else if (kind==="top_tv") items = (await tmdb("/tv/top_rated")).results.map(x=>({...x,media_type:"tv"}));
+    else if (kind==="airing_tv") items = (await tmdb("/tv/airing_today")).results.map(x=>({...x,media_type:"tv"}));
+    else if (kind==="onair_tv") items = (await tmdb("/tv/on_the_air")).results.map(x=>({...x,media_type:"tv"}));
+    else if (kind==="pop_tv") items = (await tmdb("/tv/popular")).results.map(x=>({...x,media_type:"tv"}));
+    grid.innerHTML=""; items.forEach((i,idx)=>grid.appendChild(card(i, {}, idx)));
+  } catch(e){ grid.innerHTML = '<div class="loader err">Couldn\'t load.</div>'; }
+}
+
+/* ================= CATEGORY BAR ================= */
+const PREDEFINED = [
+  {label:"Trending", fn:()=>showSpecial("trending")},
+  {label:"New Releases", fn:()=>showSpecial("new")},
+  {label:"Top Rated", fn:()=>showSpecial("toprated")},
+  {label:"In Theaters", fn:()=>showSpecial("now_movie")},
+  {label:"Coming Soon", fn:()=>showSpecial("upcoming_movie")},
+  {label:"Anime", fn:()=>showAnime("popular")},
+  {label:"Kids", fn:()=>showKids("popular")},
+  {label:"Music", fn:()=>showMusic("trend")},
+  {label:"Action", fn:()=>showGenreGrid({id:28,name:"Action"},"all")},
+  {label:"Comedy", fn:()=>showGenreGrid({id:35,name:"Comedy"},"all")},
+  {label:"Horror", fn:()=>showGenreGrid({id:27,name:"Horror"},"all")},
+  {label:"Sci-Fi", fn:()=>showGenreGrid({id:878,name:"Science Fiction"},"all")},
+  {label:"Romance", fn:()=>showGenreGrid({id:10749,name:"Romance"},"all")},
+  {label:"Documentary", fn:()=>showGenreGrid({id:99,name:"Documentary"},"all")},
+];
+function buildCatBar(){
+  const bar = document.getElementById("catBar"); bar.innerHTML = "";
+  PREDEFINED.forEach(p => { const c = document.createElement("div"); c.className = "cat-chip"; c.textContent = p.label; c.onclick = () => p.fn(); bar.appendChild(c); });
+}
+
+/* ================= REGION ================= */
+const REGIONS = [["US","United States"],["GB","United Kingdom"],["CA","Canada"],["AU","Australia"],["NZ","New Zealand"],["IE","Ireland"],["DE","Germany"],["FR","France"],["ES","Spain"],["IT","Italy"],["NL","Netherlands"],["SE","Sweden"],["NO","Norway"],["DK","Denmark"],["FI","Finland"],["PL","Poland"],["PT","Portugal"],["BR","Brazil"],["MX","Mexico"],["AR","Argentina"],["JP","Japan"],["KR","South Korea"],["IN","India"],["ID","Indonesia"],["PH","Philippines"],["TH","Thailand"],["SG","Singapore"],["MY","Malaysia"],["ZA","South Africa"],["AE","United Arab Emirates"],["TR","Türkiye"],["RU","Russia"]];
+function buildRegionSelect(){
+  const sel = document.getElementById("regionSelect");
+  sel.innerHTML = REGIONS.map(([c]) => '<option value="' + c + '"' + (c===REGION?' selected':'') + '>' + c + '</option>').join("");
+  if (!regionChangeHooked){
+    sel.onchange = () => {
+      REGION = sel.value;
+      try { localStorage.setItem("goar_region", REGION); } catch(e){}
+      providerMapCache = {};
+      toast("Region: " + REGION);
+      if (document.body.classList.contains("prov-mode")) routeTo("hubs");
+      else if (activeTab === "hubs") buildHubsTab();
+      else routeTo(activeTab);
+    };
+    regionChangeHooked = true;
+  }
+}
+
+
+let liveCountry = "All";
+let liveQuery = "";
+let liveLimit = 80;
+let westPromise = null;
+const WEST_FEEDS = [
+  ["United States", "https://iptv-org.github.io/iptv/countries/us.m3u"],
+  ["United Kingdom", "https://iptv-org.github.io/iptv/countries/uk.m3u"],
+  ["Australia", "https://iptv-org.github.io/iptv/countries/au.m3u"],
+  ["Canada", "https://iptv-org.github.io/iptv/countries/ca.m3u"],
+  ["Ireland", "https://iptv-org.github.io/iptv/countries/ie.m3u"],
+  ["New Zealand", "https://iptv-org.github.io/iptv/countries/nz.m3u"]
+];
+const WEST_BAD = /religious|shop|adult|xxx|betting|gambling/i;
+function parseWestM3U(text, country){
+  const out = [];
+  const lines = String(text || "").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    if (line.indexOf("#EXTINF") !== 0) continue;
+    const logo = (line.match(/tvg-logo="([^"]*)"/) || [])[1] || "";
+    const group = (line.match(/group-title="([^"]*)"/) || [])[1] || "Live";
+    const name = line.slice(line.lastIndexOf(",") + 1).trim();
+    let url = "";
+    for (let j = i + 1; j < lines.length; j++){
+      const s = lines[j].trim();
+      if (!s || s.charAt(0) === "#") continue;
+      url = s;
+      break;
+    }
+    if (!logo || url.indexOf("http") !== 0) continue;
+    if (/imgur\.com|ibb\.co/i.test(logo)) continue;
+    if (WEST_BAD.test(group) || WEST_BAD.test(name)) continue;
+    if (/geo-?blocked|test card|color bars/i.test(name)) continue;
+    const rm = name.match(/\((\d{3,4})p\)/);
+    const res = rm ? parseInt(rm[1], 10) : 0;
+    const clean = name.replace(/\s*\[[^\]]*\]\s*/g, " ").replace(/\s*\(\d{3,4}p\)\s*/g, " ").replace(/\s+/g, " ").trim();
+    out.push({ c: country, n: clean, g: (group.split(";")[0] || "Live"), u: url, i: logo, r: res, k: country + "|" + clean.toLowerCase() });
+  }
+  return out;
+}
+function bestWest(rows){
+  const map = {};
+  rows.forEach(function(ch){
+    const prev = map[ch.k];
+    if (!prev){ map[ch.k] = ch; return; }
+    const prevImgur = /imgur/i.test(prev.i), nextImgur = /imgur/i.test(ch.i);
+    if ((ch.r || 0) > (prev.r || 0)) map[ch.k] = ch;
+    else if ((ch.r || 0) === (prev.r || 0) && prevImgur && !nextImgur) map[ch.k] = ch;
+  });
+  return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a, b){
+    const ah = /imgur/i.test(a.i) ? 0 : 1, bh = /imgur/i.test(b.i) ? 0 : 1;
+    return (bh - ah) || ((b.r || 0) - (a.r || 0)) || a.n.localeCompare(b.n);
+  });
+}
+function refreshWestLive(){
+  if (westPromise) return westPromise;
+  westPromise = (async function(){
+    try {
+      const cached = JSON.parse(localStorage.getItem("goar-west-v2") || "null");
+      if (cached && cached.rows && cached.rows.length > 40 && Date.now() - cached.at < 12 * 60 * 60 * 1000){
+        window.__L
