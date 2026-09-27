@@ -1,0 +1,255 @@
+tion value="' + u + '"' + (u===WISP_URL?' selected':'') + '>' + u.replace(/^wss:\/\//,"") + '</option>').join("") +
+    '<option value="__custom__">custom wss://…</option>';
+  sel.onchange = async () => {
+    let url = sel.value;
+    if (url === "__custom__"){
+      const typed = prompt("WISP WebSocket URL (must end with /)", WISP_URL);
+      if (!typed){ sel.value = WISP_URL; return; }
+      url = normalizeWispUrl(typed);
+      try { localStorage.setItem("goar_wisp_custom", url); } catch(e){}
+    }
+    WISP_URL = url;
+    try { localStorage.setItem("goar_wisp_url", url); } catch(e){}
+    resetHttpSession();
+    _libcurlReady = null;
+    toast("Switching WISP…");
+    try {
+      const lc = await ensureLibcurl(true);
+      applyWispUrl(lc, url);
+      await probeTunnel(lc);
+      setTunnelChip("ok", "wisp");
+      toast("WISP connected");
+    } catch(e){
+      setTunnelChip("bad", "wisp down");
+      toast("WISP failed: " + (e.message || e));
+    }
+    sel._hooked = false;
+    buildWispSelect();
+  };
+  const retry = document.getElementById("wispRetry");
+  if (retry && !retry._hooked){
+    retry._hooked = true;
+    retry.onclick = async () => {
+      resetHttpSession();
+      _libcurlReady = null;
+      try { await ensureLibcurl(true); toast("Tunnel ready"); }
+      catch(e){ toast("Tunnel failed: " + (e.message || e)); }
+    };
+  }
+  sel._hooked = true;
+}
+
+window.goarTunnelFetch = function(url, init){
+  return wispFetch(url, init);
+};
+
+/* ================= PWA ================= */
+(function setupPWA(){
+  function makeIcon(size){
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const g = c.getContext("2d");
+    g.fillStyle = "#0a0a0d";
+    const r = size * 0.18;
+    g.beginPath();
+    g.moveTo(r,0); g.lineTo(size-r,0); g.quadraticCurveTo(size,0,size,r);
+    g.lineTo(size,size-r); g.quadraticCurveTo(size,size,size-r,size);
+    g.lineTo(r,size); g.quadraticCurveTo(0,size,0,size-r);
+    g.lineTo(0,r); g.quadraticCurveTo(0,0,r,0); g.fill();
+    g.fillStyle = "#e8b64c";
+    g.font = "700 " + Math.round(size*0.42) + "px Space Grotesk, Arial, sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("g", size/2, size/2 + size*0.04);
+    return c.toDataURL("image/png");
+  }
+  const icon192 = makeIcon(192);
+  const icon512 = makeIcon(512);
+  const apple = document.getElementById("appleTouchIcon");
+  if (apple) apple.href = icon192;
+  let iconLink = document.querySelector('link[rel="icon"]');
+  if (!iconLink){ iconLink = document.createElement("link"); iconLink.rel = "icon"; document.head.appendChild(iconLink); }
+  iconLink.type = "image/png";
+  iconLink.href = icon192;
+
+  const start = "./";
+  const manifest = {
+    name: "goarxyz",
+    short_name: "goarxyz",
+    description: "Movies, TV, anime, kids and music",
+    id: "/",
+    start_url: start,
+    scope: "./",
+    display: "standalone",
+    display_override: ["fullscreen", "standalone", "minimal-ui"],
+    orientation: "any",
+    background_color: "#0a0a0d",
+    theme_color: "#0a0a0d",
+    categories: ["entertainment", "video"],
+    icons: [
+      { src: icon192, sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+    ]
+  };
+  const man = document.getElementById("manifestLink");
+  if (man) man.href = "data:application/manifest+json," + encodeURIComponent(JSON.stringify(manifest));
+
+  const secure = location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  if ("serviceWorker" in navigator && secure){
+    const swCode = [
+      "const CACHE='goarxyz-v2';",
+      "self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./']).catch(()=>{}))); });",
+      "self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k!==CACHE).map(k => caches.delete(k))))); self.clients.claim(); });",
+      "self.addEventListener('fetch', e => {",
+      "  const u = e.request.url;",
+      "  if (u.includes('api.themoviedb.org') || u.includes('image.tmdb.org') || u.startsWith('blob:') || u.includes('vidrock.') || u.includes('libcurl') || u.includes('hls.js')) return;",
+      "  if (e.request.mode === 'navigate') { e.respondWith(fetch(e.request).catch(() => caches.match('./'))); return; }",
+      "});"
+    ].join("");
+    try {
+      const blob = new Blob([swCode], {type:"application/javascript"});
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+    } catch(e){}
+  }
+})();
+
+function isTvDevice(){
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get("tv") === "1" || q.get("tv") === "true") return true;
+  } catch(e){}
+  const ua = navigator.userAgent || "";
+  if (/SmartTV|SMART-TV|Smart-TV|Tizen|Web0S|WebOS|NetCast|BRAVIA|AFT[A-Z]|CrKey|TV Safari|HbbTV|Viera|Hisense|VIDAA|PlayStation|Xbox|AppleTV|GoogleTV|FireTV|Android TV/i.test(ua)) return true;
+  try {
+    if (window.matchMedia("(min-width: 1280px) and (pointer: coarse)").matches) return true;
+    if (window.matchMedia("(min-width: 1920px) and (hover: none)").matches) return true;
+  } catch(e){}
+  return false;
+}
+function tvFocusables(){
+  return [...document.querySelectorAll(".card, .top10-item, .provider-app, .btn, nav a, .cat-chip, .see-all, .p-close, .player-picker select")].filter(el => {
+    if (!(el instanceof HTMLElement)) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && el.offsetParent !== null;
+  });
+}
+function setupTvMode(){
+  if (!isTvDevice()) return;
+  document.body.classList.add("tv");
+  document.documentElement.style.cursor = "none";
+  document.addEventListener("keydown", (e) => {
+    const keys = { ArrowLeft:-1, ArrowRight:1, ArrowUp:-2, ArrowDown:2 };
+    if (!(e.key in keys) && e.key !== "Enter" && e.key !== "Go" && e.key !== "Select") return;
+    const overlay = document.getElementById("playerOverlay");
+    if (overlay && overlay.classList.contains("open") && (e.key === "Backspace" || e.key === "Escape")) return;
+    if (e.key === "Enter" || e.key === "Go" || e.key === "Select"){
+      const a = document.activeElement;
+      if (a && a !== document.body){ a.click(); e.preventDefault(); }
+      return;
+    }
+    e.preventDefault();
+    const items = tvFocusables();
+    if (!items.length) return;
+    const cur = document.activeElement;
+    let idx = items.indexOf(cur);
+    if (idx < 0){ items[0].focus(); return; }
+    const dir = keys[e.key];
+    const cr = cur.getBoundingClientRect();
+    const cx = cr.left + cr.width/2, cy = cr.top + cr.height/2;
+    let best = null, bestScore = Infinity;
+    items.forEach((el, i) => {
+      if (i === idx) return;
+      const r = el.getBoundingClientRect();
+      const x = r.left + r.width/2, y = r.top + r.height/2;
+      const dx = x - cx, dy = y - cy;
+      if (dir === 1 && dx <= 8) return;
+      if (dir === -1 && dx >= -8) return;
+      if (dir === 2 && dy <= 8) return;
+      if (dir === -2 && dy >= -8) return;
+      const primary = (dir === 1 || dir === -1) ? Math.abs(dx) : Math.abs(dy);
+      const secondary = (dir === 1 || dir === -1) ? Math.abs(dy) : Math.abs(dx);
+      const score = primary + secondary * 2.2;
+      if (score < bestScore){ bestScore = score; best = el; }
+    });
+    if (best){
+      best.focus();
+      best.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    }
+  });
+  setTimeout(() => {
+    const first = document.getElementById("heroPlay") || tvFocusables()[0];
+    if (first) first.focus();
+  }, 800);
+}
+document.addEventListener("DOMContentLoaded", setupTvMode);
+if (document.readyState !== "loading") setupTvMode();
+
+/* ================= TMDB API ================= */
+async function tmdb(path, params={}){
+  const url = new URL(BASE+path);
+  url.searchParams.set("api_key", API_KEY);
+  url.searchParams.set("language","en-US");
+  for (const k in params){ if (params[k] !== undefined && params[k] !== null) url.searchParams.set(k, params[k]); }
+  let res;
+  try { res = await fetch(url); }
+  catch(e){ throw new Error("NETWORK: " + e.message); }
+  let body; try { body = await res.json(); } catch(e){ body = null; }
+  if (!res.ok){ const msg = body && body.status_message ? body.status_message : ("HTTP "+res.status); throw new Error("TMDB "+res.status+": "+msg); }
+  return body;
+}
+function showKeyBanner(msg){ const b = document.getElementById("keyBanner"); b.textContent = "⚠ " + msg; b.classList.add("show"); }
+function toast(msg){ const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("show"), 2200); }
+
+/* ================= HELPERS ================= */
+function yearOf(item){ return (item.release_date||item.first_air_date||"").slice(0,4) || "—"; }
+function titleOf(item){ return item.title || item.name || "Untitled"; }
+function typeOf(item){ return item._forceType || item.media_type || (item.title ? "movie":"tv"); }
+function ratingOf(item){ return item.vote_average ? item.vote_average.toFixed(1) : "—"; }
+function posterImg(item, size="w342"){ return item.poster_path ? IMG + "/" + size + item.poster_path : "https://placehold.co/300x450/17171e/8b8c98?text=No+Image"; }
+function backdropImg(item, size="original"){ return item.backdrop_path ? IMG + "/" + size + item.backdrop_path : posterImg(item,"w780"); }
+function profileImg(p, size="w185"){ return p ? IMG + "/" + size + p : "https://placehold.co/185x185/1a1a22/5a5a68?text=%20"; }
+function providerLogo(path, size="w92"){ return path ? IMG + "/" + size + path : ""; }
+function daysAgoISO(days){ const d = new Date(); d.setDate(d.getDate()-days); return d.toISOString().slice(0,10); }
+function mergeTwo(a, b, cmp){
+  const out = []; let i = 0, j = 0;
+  while (i < a.length || j < b.length){
+    if (i >= a.length){ out.push(b[j++]); continue; }
+    if (j >= b.length){ out.push(a[i++]); continue; }
+    out.push(cmp(a[i], b[j]) >= 0 ? a[i++] : b[j++]);
+  }
+  return out;
+}
+const cmpPop = (a,b) => (a.popularity||0) - (b.popularity||0);
+const cmpRating = (a,b) => (a.vote_average||0) - (b.vote_average||0);
+const cmpDate = (a,b) => ((a.release_date||a.first_air_date||"")).localeCompare((b.release_date||b.first_air_date||""));
+
+/* ================= LOCAL STORAGE ================= */
+const LS = {
+  get(k, fallback){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch(e){ return fallback; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+let watchlist = LS.get("goar_watchlist", []);
+let continueList = LS.get("goar_continue", []);
+function isSaved(id, type){ return watchlist.some(x => x.id == id && x.type === type); }
+function toggleSave(item, type){
+  const i = watchlist.findIndex(x => x.id == item.id && x.type === type);
+  if (i >= 0){ watchlist.splice(i, 1); toast("Removed from My List"); }
+  else { watchlist.unshift({ id:item.id, type, title:titleOf(item), poster:item.poster_path, rating:item.vote_average, date:yearOf(item), added:Date.now() }); toast("Added to My List"); }
+  LS.set("goar_watchlist", watchlist);
+  document.querySelectorAll(".card-save[data-id=\"" + item.id + "\"][data-type=\"" + type + "\"]").forEach(b => {
+    const saved = isSaved(item.id, type); b.classList.toggle("saved", saved);
+  });
+}
+function pushContinue(item, type, season, episode){
+  continueList = continueList.filter(x => !(x.id == item.id && x.type === type));
+  continueList.unshift({ id:item.id, type, title:titleOf(item), poster:item.poster_path, rating:item.vote_average, season:season||null, episode:episode||null, at:Date.now() });
+  if (continueList.length > 20) continueList.length = 20;
+  LS.set("goar_continue", continueList);
+}
+
+/* ================= CARD ================= */
+function card(item, opts={}, idx=0){
+  const t = typeOf(item);
+  const div = document.createElement("div");
+  div.className = "card anim-up";
+  div.tabIndex = 0
