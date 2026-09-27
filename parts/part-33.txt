@@ -1,0 +1,253 @@
+uTube-Client-Version":client.version,
+          "User-Agent":client.ua,
+          "Origin":"https://www.youtube.com",
+          "Referer":"https://www.youtube.com/"
+        },
+        body:JSON.stringify(body)
+      },18000);
+      if(r&&r.ok) return r.json();
+    }catch{}
+  }
+  return null;
+}
+async function ytExtract(id){
+  const bag={ title:"", artist:"", hls:"", adaptive:[], muxed:[] };
+  for(const client of YT_CLIENTS){
+    try{
+      const j=await ytPlayerClient(id, client);
+      harvestPlayer(j, bag);
+      if(hasUsable(bag) && (bag.adaptive.length || bag.muxed.length)) break;
+    }catch{}
+  }
+  return bag;
+}
+async function ytMusicSearch(q){
+  const body={
+    context:{ client:{ clientName:"WEB_REMIX", clientVersion:"1.20260804.16.00", hl:"en", gl:"US" } },
+    query:q
+  };
+  try{
+    const r=await fetchAny("https://music.youtube.com/youtubei/v1/search?prettyPrint=false&key=AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "X-YouTube-Client-Name":"67", "X-YouTube-Client-Version":"1.20260804.16.00" },
+      body:JSON.stringify(body)
+    },18000);
+    if(!r||!r.ok) return [];
+    const j=await r.json();
+    const songs=[]; const seen=new Set();
+    (function walk(n){
+      if(!n||typeof n!=="object") return;
+      if(Array.isArray(n)){ n.forEach(walk); return; }
+      const item=n.musicResponsiveListItemRenderer;
+      if(item){
+        let id=item.playlistItemData&&item.playlistItemData.videoId;
+        if(!id){ JSON.stringify(item).replace(/"videoId":"([\w-]{11})"/,(_,v)=>id=id||v); }
+        if(id&&!seen.has(id)){
+          const cols=(item.flexColumns||[]).map(c=>{
+            const t=(c.musicResponsiveListItemFlexColumnRenderer||{}).text||{};
+            return t.simpleText||(Array.isArray(t.runs)?t.runs.map(x=>x.text||"").join(""):"");
+          });
+          seen.add(id); songs.push({id,title:cols[0]||id,artist:String(cols[1]||"YouTube").split("•")[0].trim()});
+        }
+      }
+      Object.values(n).forEach(walk);
+    })(j);
+    return uniqSongs(songs);
+  }catch{ return []; }
+}
+async function resolveSources(id){
+  const cands=[]; let title="", artist="";
+  try{
+    const bag=await ytExtract(id);
+    title=bag.title||title; artist=bag.artist||artist;
+    bag.adaptive.filter(f=>/audio/i.test(f.mimeType||f.type||"")).sort((a,b)=>(b.bitrate||0)-(a.bitrate||0)).forEach(f=>pushCand(cands,f.url,f.mimeType||f.type,title,artist,true));
+    bag.muxed.forEach(f=>pushCand(cands,f.url,f.mimeType||f.type,title,artist,false));
+    if(bag.hls) pushCand(cands, bag.hls, "application/vnd.apple.mpegurl", title, artist, false);
+  }catch{}
+  try{
+    const j=await invGet("/api/v1/videos/"+encodeURIComponent(id)+"?region=US");
+    title=j.title||title; artist=j.author||artist;
+    const adaptive=j.adaptiveFormats||[], muxed=j.formatStreams||[];
+    adaptive.filter(f=>/audio/i.test(f.type||f.mimeType||"")&&f.url).sort((a,b)=>(b.bitrate||0)-(a.bitrate||0)).forEach(f=>pushCand(cands,f.url,f.type||f.mimeType,title,artist,true));
+    muxed.filter(f=>f.url).forEach(f=>pushCand(cands,f.url,f.type||f.mimeType,title,artist,false));
+    if(j.hlsUrl) pushCand(cands, j.hlsUrl, "application/vnd.apple.mpegurl", title, artist, false);
+  }catch{}
+  for(const base of PIPED){
+    try{
+      const r=await fetchAny(base+"/streams/"+id); if(!r||!r.ok) continue;
+      const j=await r.json();
+      title=j.title||title; artist=j.uploader||artist;
+      (j.audioStreams||[]).sort((a,b)=>(b.bitrate||0)-(a.bitrate||0)).forEach(f=>pushCand(cands,f.url,f.mimeType||f.codec,title,artist,true));
+      if(j.hls) pushCand(cands, j.hls, "application/vnd.apple.mpegurl", title, artist, false);
+      (j.videoStreams||[]).filter(f=>f.url).slice(0,2).forEach(f=>pushCand(cands,f.url,f.mimeType,title,artist,false));
+      if(cands.length) break;
+    }catch{}
+  }
+  const seen=new Set();
+  const out=cands.filter(c=>{ if(!c.url||seen.has(c.url)) return false; seen.add(c.url); return true; });
+  out.sort((a,b)=>{
+    const rank=x=>x.audioOnly&&x.kind==="file"?0:x.kind==="file"?1:x.kind==="hls"?2:3;
+    return rank(a)-rank(b);
+  });
+  if(!out.length) throw new Error("no playable source");
+  out.forEach(c=>{ c.title=c.title||title; c.artist=c.artist||artist; });
+  return out;
+}
+class WispHlsLoader{
+  constructor(config){ this.config=config; this.stats={aborted:false,loaded:0,retry:0,total:0,chunkCount:0,bwEstimate:0,loading:{start:0,first:0,end:0},buffering:{start:0,first:0,end:0},parsing:{start:0,end:0}}; this._abort=false; }
+  abort(){ this._abort=true; this.stats.aborted=true; }
+  destroy(){ this.abort(); }
+  load(context, config, callbacks){
+    this.stats.loading.start=performance.now();
+    const wantText=context.responseType==="text" || (context.type && String(context.type).indexOf("manifest")>=0);
+    fetchAny(context.url).then(async r=>{
+      if(this._abort) return;
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const data=wantText ? await r.text() : await r.arrayBuffer();
+      this.stats.loaded=typeof data==="string"?data.length:data.byteLength;
+      this.stats.total=this.stats.loaded;
+      this.stats.loading.first=this.stats.loading.end=performance.now();
+      callbacks.onSuccess({url:context.url,data}, this.stats, context, null);
+    }).catch(err=>{
+      if(this._abort) return;
+      callbacks.onError({code:0,text:String(err&&err.message?err.message:err)}, context, null);
+    });
+  }
+}
+function destroyEngine(){
+  if(engine.hls){ try{ engine.hls.destroy(); }catch{} engine.hls=null; }
+  try{ media.pause(); media.removeAttribute("src"); media.load(); }catch{}
+  if(engine.blob){ try{ URL.revokeObjectURL(engine.blob); }catch{} engine.blob=null; }
+  engine.kind="";
+}
+let ytPlayer=null, ytReadyApi=false;
+window.onYouTubeIframeAPIReady=function(){ ytReadyApi=true; };
+function waitYtApi(){
+  if(window.YT && YT.Player){ ytReadyApi=true; return Promise.resolve(); }
+  return new Promise((resolve,reject)=>{
+    const t0=Date.now();
+    const iv=setInterval(()=>{
+      if(window.YT && YT.Player){ clearInterval(iv); ytReadyApi=true; resolve(); }
+      else if(Date.now()-t0>12000){ clearInterval(iv); reject(new Error("YouTube player API missing")); }
+    },50);
+  });
+}
+function ytState(){ try{ return ytPlayer && ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : -1; }catch{ return -1; } }
+function attachYt(id, auto){
+  return waitYtApi().then(()=>new Promise((resolve,reject)=>{
+    const start=()=>{
+      try{
+        if(ytPlayer && ytPlayer.loadVideoById){
+          if(auto) ytPlayer.loadVideoById(id); else ytPlayer.cueVideoById(id);
+          engine.kind="yt";
+          resolve();
+          return;
+        }
+      }catch{}
+      try{ if(ytPlayer && ytPlayer.destroy) ytPlayer.destroy(); }catch{}
+      ytPlayer=new YT.Player("ytMount",{
+        width:1, height:1, videoId:id,
+        playerVars:{ autoplay:auto?1:0, controls:0, disablekb:1, fs:0, rel:0, modestbranding:1, playsinline:1, origin:location.origin },
+        events:{
+          onReady(e){
+            try{ e.target.setVolume(S.prefs().vol||80); }catch{}
+            engine.kind="yt";
+            resolve();
+          },
+          onStateChange(e){
+            if(e.data===YT.PlayerState.PLAYING){ state.playing=true; setStatus("Playing"); paintNow(); }
+            if(e.data===YT.PlayerState.PAUSED){ state.playing=false; paintNow(); }
+            if(e.data===YT.PlayerState.ENDED) next();
+          },
+          onError(){
+            setStatus("Track blocked");
+            if(state.skip<3 && state.list.length>1){ state.skip++; setTimeout(()=>next(), 400); }
+          }
+        }
+      });
+    };
+    start();
+  }));
+}
+async function wispBlobUrl(url, mime){
+  const r=await fetchAny(url, {}, 28000);
+  if(!r || !r.ok) throw new Error("tunnel HTTP "+(r&&r.status));
+  const buf=await r.arrayBuffer();
+  engine.blob=URL.createObjectURL(new Blob([buf], {type: mime||"audio/mp4"}));
+  return engine.blob;
+}
+function waitMedia(el, timeout){
+  return new Promise((resolve,reject)=>{
+    const t=setTimeout(()=>reject(new Error("media timeout")), timeout||12000);
+    const ok=()=>{ clearTimeout(t); cleanup(); resolve(); };
+    const bad=()=>{ clearTimeout(t); cleanup(); reject(new Error("media error")); };
+    const cleanup=()=>{ el.removeEventListener("loadeddata",ok); el.removeEventListener("canplay",ok); el.removeEventListener("error",bad); };
+    el.addEventListener("loadeddata",ok,{once:true});
+    el.addEventListener("canplay",ok,{once:true});
+    el.addEventListener("error",bad,{once:true});
+  });
+}
+async function attachHls(url){
+  if(media.canPlayType && media.canPlayType("application/vnd.apple.mpegurl") && !(window.Hls && Hls.isSupported())){
+    media.src=url; await waitMedia(media); return;
+  }
+  if(typeof Hls==="undefined" || !Hls.isSupported()) throw new Error("hls.js missing");
+  async function go(loader){
+    const opts={enableWorker:false,lowLatencyMode:false,maxBufferLength:18,maxMaxBufferLength:36};
+    if(loader) opts.loader=loader;
+    const hls=new Hls(opts);
+    engine.hls=hls;
+    await new Promise((resolve,reject)=>{
+      const t=setTimeout(()=>reject(new Error("manifest timeout")),16000);
+      hls.on(Hls.Events.MANIFEST_PARSED,()=>{ clearTimeout(t); resolve(); });
+      hls.on(Hls.Events.ERROR,(_,data)=>{ if(data&&data.fatal){ clearTimeout(t); reject(new Error(data.details||data.type||"hls fatal")); } });
+      hls.loadSource(url); hls.attachMedia(media);
+    });
+  }
+  try{ await go(WispHlsLoader); }
+  catch(e){ destroyEngine(); await go(null); }
+}
+async function attachFile(url, mime){
+  if(getLibcurl() && typeof getLibcurl().fetch==="function"){
+    try{
+      setStatus("Audio…");
+      media.src=await wispBlobUrl(url, mime);
+      await waitMedia(media, 18000);
+      return;
+    }catch{ destroyEngine(); }
+  }
+  media.src=url;
+  await waitMedia(media, 8000);
+}
+async function playCandidate(c){
+  destroyEngine();
+  engine.kind=c.kind==="hls"?"hls":"file";
+  setStatus(c.kind==="hls"?"HLS…":"Audio…");
+  if(c.kind==="hls") await attachHls(c.url);
+  else await attachFile(c.url, c.mime);
+}
+async function searchSongs(q){
+  try{ const rows=uniqSongs(await invGet("/api/v1/search?type=video&region=US&q="+encodeURIComponent(q))); if(rows.length) return rows.slice(0,24); }catch{}
+  const yt=await ytMusicSearch(q); if(yt.length) return yt.slice(0,24);
+  for(const base of PIPED){
+    try{ const r=await fetchAny(base+"/search?q="+encodeURIComponent(q)+"&filter=videos"); if(!r||!r.ok) continue; const j=await r.json(); const rows=uniqSongs(Array.isArray(j)?j:(j.items||[])); if(rows.length) return rows.slice(0,24); }catch{}
+  }
+  return [];
+}
+async function loadLiveCatalog(){
+  const tops=[], news=[];
+  for(const pid of TOP_PLAYLISTS){ const rows=await playlistSongs(pid); tops.push(...rows); if(uniqSongs(tops).length>=16) break; }
+  try{ const tr=await invGet("/api/v1/trending?type=music&region=US"); tops.push(...uniqSongs(Array.isArray(tr)?tr:[])); }catch{}
+  for(const pid of NEW_PLAYLISTS){ const rows=await playlistSongs(pid); news.push(...rows); }
+  try{ news.push(...await searchSongs("official music video 2026")); }catch{}
+  const t=uniqSongs(tops.concat(TOP_SEED));
+  const n=uniqSongs(news.concat(NEW_SEED));
+  if(t.length){ state.tops=t.slice(0,40); S.set("tops",state.tops); }
+  if(n.length){ state.news=n.slice(0,40); S.set("news",state.news); }
+  if(!S.list().length) state.list=state.tops.slice();
+}
+
+const IDB_NAME="goarxyz-music", IDB_STORE="tracks";
+function idbOpen(){ return new Promise((res,rej)=>{ const req=indexedDB.open(IDB_NAME,1); req.onupgradeneeded=()=>req.result.createObjectStore(IDB_STORE); req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); }); }
+async function idbPut(id,blob){ const db=await idbOpen(); await new Promise((res,rej)=>{ const tx=db.transaction(IDB_STORE,"readwrite"); tx.objectStore(IDB_STORE).put(blob,id); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function idbGet(id){ const db=await idbOpen(); return new Promise((res,rej)=>{ const tx=db
