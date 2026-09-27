@@ -1,0 +1,220 @@
+ataset.tab)));
+}
+
+/* ================= SEARCH ================= */
+let searchTimer;
+const searchInput = document.getElementById("searchInput");
+const searchResults = document.getElementById("searchResults");
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  const q = searchInput.value.trim();
+  if (!q){ searchResults.classList.remove("open"); return; }
+  searchTimer = setTimeout(async () => {
+    try {
+      const data = await tmdb("/search/multi",{query:q, include_adult:false});
+      const items = data.results.filter(r => (r.media_type==="movie"||r.media_type==="tv") && r.poster_path).slice(0,10);
+      searchResults.innerHTML = items.map(item => {
+        const isMusic = (item.genre_ids||[]).includes(MUSIC_GENRE_ID);
+        const isKids = (item.genre_ids||[]).some(id => id===10751 || id===16) && !isMusic;
+        const label = isMusic ? "Music" : (isKids ? "Kids" : (item.media_type==="movie"?"Movie":"TV"));
+        return '<div class="sr-item" data-id="' + item.id + '" data-type="' + item.media_type + '">' +
+          '<img src="' + posterImg(item,"w92") + '" alt="' + titleOf(item) + '">' +
+          '<div><div class="sr-t">' + titleOf(item) + '</div>' +
+          '<div class="sr-m">' + yearOf(item) + ' · ' + label + (item.vote_average ? " · ★ " + item.vote_average.toFixed(1) : "") + '</div></div></div>';
+      }).join("") || '<div class="sr-item"><div class="sr-m">No results</div></div>';
+      searchResults.classList.add("open");
+      searchResults.querySelectorAll(".sr-item[data-id]").forEach(el => {
+        el.onclick = () => { openModal(el.dataset.id, el.dataset.type); searchResults.classList.remove("open"); searchInput.value = ""; };
+      });
+    } catch(e){
+      searchResults.innerHTML = '<div class="sr-item"><div class="sr-m">Search failed: ' + e.message + '</div></div>';
+      searchResults.classList.add("open");
+    }
+  }, 300);
+});
+document.addEventListener("click", e => { if (!e.target.closest(".search-wrap")) searchResults.classList.remove("open"); });
+
+/* ================= MODAL ================= */
+const modalBackdrop = document.getElementById("modalBackdrop");
+const modalContent = document.getElementById("modalContent");
+function miniCard(item, idx, type){
+  return '<div class="mini-card anim-up" style="animation-delay:' + (idx*35) + 'ms" data-id="' + item.id + '" data-type="' + type + '">' +
+    '<div class="mc-img"><img loading="lazy" src="' + posterImg(item,"w342") + '" alt=""><div class="mc-rating">★ ' + ratingOf(item) + '</div></div>' +
+    '<div class="mc-title">' + titleOf(item) + '</div></div>';
+}
+let modalToken = 0;
+async function openModal(id, type, focusWatch=false){
+  const myToken = ++modalToken;
+  modalBackdrop.classList.add("open");
+  modalContent.innerHTML = '<div class="loader">Loading details…</div>';
+  try {
+    const data = await tmdb("/" + type + "/" + id, {append_to_response:"credits,videos,external_ids,similar,recommendations"});
+    if (myToken !== modalToken) return;
+    const imdbId = data.external_ids && data.external_ids.imdb_id;
+    const videos = (data.videos && data.videos.results || []).filter(v => v.site==="YouTube").slice(0,6);
+    const trailer = videos.find(v => v.type==="Trailer");
+    const runtime = data.runtime ? (data.runtime + " min") : (data.episode_run_time && data.episode_run_time[0] ? (data.episode_run_time[0] + " min/ep") : (data.number_of_seasons ? (data.number_of_seasons + " season" + (data.number_of_seasons>1?'s':'')) : ""));
+    const cast = ((data.credits && data.credits.cast) || []).filter(c => c.profile_path).slice(0,14);
+    const similar = ((data.similar && data.similar.results) || []).filter(r => r.poster_path).slice(0,10);
+    const recs = ((data.recommendations && data.recommendations.results) || []).filter(r => r.poster_path).slice(0,10);
+    const saved = isSaved(id, type);
+    modalContent.innerHTML =
+      '<div class="modal-hero" style="background-image:url(' + backdropImg(data) + ')"><button class="modal-close" id="modalCloseBtn">✕</button></div>' +
+      '<div class="modal-body">' +
+      '<h2>' + titleOf(data) + '</h2>' +
+      (data.tagline ? '<div class="modal-tagline">' + data.tagline + '</div>' : '') +
+      '<div class="modal-meta">' +
+      '<span style="color:var(--accent); font-weight:700;">★ ' + ratingOf(data) + '</span>' +
+      '<span>' + yearOf(data) + '</span>' +
+      (runtime ? '<span>' + runtime + '</span>' : '') +
+      '<span>' + (type==="movie" ? "Movie" : "TV Show") + '</span>' +
+      '</div>' +
+      '<div class="modal-genres">' + (data.genres||[]).map(g => '<span>' + g.name + '</span>').join("") + '</div>' +
+      '<div class="modal-overview">' + (data.overview || "No overview available.") + '</div>' +
+      '<div class="modal-watch">' +
+      '<button class="btn btn-play" id="modalPlay">▶ Watch Now</button>' +
+      '<button class="btn-icon ' + (saved?'saved':'') + '" id="modalSave">' + bookmarkSvg(saved) + '</button>' +
+      (trailer ? '<button class="btn btn-ghost" id="modalTrailer">▶ Trailer</button>' : '') +
+      '<span class="modal-watch-note">' + (type==="tv" ? "Starts at Season 1, Episode 1." : "Plays through encrypted WISP tunnel.") + '</span></div>' +
+      (cast.length ? '<div class="modal-section"><div class="modal-section-title">Top Cast</div><div class="cast-rail">' +
+        cast.map(c => '<div class="cast-card"><img class="cast-img" loading="lazy" src="' + profileImg(c.profile_path) + '" alt=""><div class="cast-name">' + c.name + '</div><div class="cast-role">' + (c.character||"") + '</div></div>').join("") +
+        '</div></div>' : '') +
+      (similar.length ? '<div class="modal-section"><div class="modal-section-title">Similar</div><div class="mini-rail">' + similar.map((r,i)=>miniCard(r,i,type)).join("") + '</div></div>' : '') +
+      (recs.length ? '<div class="modal-section"><div class="modal-section-title">You Might Also Like</div><div class="mini-rail">' + recs.map((r,i)=>miniCard(r,i,type)).join("") + '</div></div>' : '') +
+      '<div class="modal-links" style="margin-top:26px;">' +
+      '<a class="btn btn-ghost" target="_blank" rel="noopener" href="https://www.themoviedb.org/' + type + '/' + id + '">TMDB</a>' +
+      (imdbId ? '<a class="btn btn-ghost" target="_blank" rel="noopener" href="https://www.imdb.com/title/' + imdbId + '/">IMDb</a>' : '') +
+      '</div></div>';
+
+    document.getElementById("modalCloseBtn").onclick = closeModal;
+    document.getElementById("modalPlay").onclick = () => openPlayer(id, type, titleOf(data), data);
+    document.getElementById("modalSave").onclick = () => {
+      toggleSave(data, type);
+      const s = isSaved(id, type);
+      const mb = document.getElementById("modalSave");
+      mb.classList.toggle("saved", s); mb.innerHTML = bookmarkSvg(s);
+    };
+    const trBtn = document.getElementById("modalTrailer");
+    if (trBtn && trailer) trBtn.onclick = () => window.open("https://www.youtube.com/watch?v=" + trailer.key, "_blank");
+    modalContent.querySelectorAll(".mini-card").forEach(mc => {
+      mc.onclick = () => { closeModal(); setTimeout(() => openModal(mc.dataset.id, mc.dataset.type), 100); };
+    });
+  } catch(e){
+    if (myToken !== modalToken) return;
+    modalContent.innerHTML = '<div class="loader err">Couldn\'t load details.<br><code>' + e.message + '</code><br><button class="btn btn-ghost" id="modalCloseBtn2" style="margin-top:10px;">Close</button></div>';
+    document.getElementById("modalCloseBtn2").onclick = closeModal;
+  }
+}
+function closeModal(){ modalBackdrop.classList.remove("open"); modalContent.innerHTML = ""; }
+modalBackdrop.addEventListener("click", e => { if (e.target === modalBackdrop) closeModal(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape"){
+    if (document.getElementById("playerOverlay").classList.contains("open")) closePlayer();
+    else closeModal();
+  }
+  if (e.key === "/" && !e.target.matches("input,select,textarea")){ e.preventDefault(); searchInput.focus(); }
+});
+
+/* ================= BOOT ================= */
+try { const saved = localStorage.getItem("goar_region"); if (saved) REGION = saved; } catch(e){}
+buildRegionSelect();
+buildCatBar();
+buildPillNav();
+buildHome();
+refreshWestLive();
+try {
+  const tab = new URLSearchParams(location.search).get("tab");
+  if (tab && tab !== "home" && tab !== "music") setTimeout(() => routeTo(tab), 80);
+} catch(e){}
+
+window.resolveSources = resolveSources;
+window.playSource = playSource;
+window.destroyHls = destroyHls;
+window.closePlayer = closePlayer;
+window.tmdb = tmdb;
+
+buildWispSelect();
+setTimeout(() => {
+  ensureLibcurl().then(() => buildWispSelect()).catch(e => {
+    console.warn("WISP warm-up failed:", e && e.message ? e.message : e);
+    buildWispSelect();
+  });
+}, 200);
+
+</script>
+<script>
+(function(){
+
+
+const LIBCURL_SOURCES = [
+  "https://cdn.jsdelivr.net/npm/libcurl.js@0.7.4/libcurl_full.js",
+  "https://unpkg.com/libcurl.js@0.7.4/libcurl_full.js",
+  "https://cdn.jsdelivr.net/npm/libcurl.js@latest/libcurl_full.js"
+];
+const DEFAULT_WISP_URLS = [
+  "wss://wisp.mercurywork.shop/",
+  "wss://wisp.mercurywork.shop/wisp/",
+  "wss://wisp.crazymid.dev/",
+  "wss://wisp.terbium.app/"
+];
+const INV = [
+  "https://invidious.f5.si",
+  "https://yt.chocolatemoo53.com",
+  "https://invidious.tiekoetter.com",
+  "https://inv.nadeko.net",
+  "https://invidious.nerdvpn.de",
+  "https://yewtu.be"
+];
+const PIPED = [
+  "https://pipedapi.kavin.rocks",
+  "https://pipedapi.adminforge.de",
+  "https://pipedapi.me.projectsegfau.lt",
+  "https://api.piped.private.coffee"
+];
+const TOP_PLAYLISTS = [
+  "RDCLAK5uy_kmPRjHDECIcuVwnKsx2Ng7fyNgFKWNJFs",
+  "RDCLAK5uy_nrS6tX1-aHomOfpEBSbVYNfM9R58rAlrs",
+  "PL4fGSI1pDJn69On1f-8NAvX_CYlx7QyZc"
+];
+const NEW_PLAYLISTS = [
+  "PL4fGSI1pDJn61unMfmrUSz68RT8IFFnks",
+  "PLNcZGm7R37QHVurZRFwzvcZft7Dfmiv4w"
+];
+const NEW_SEED = [
+  {id:"32si5cfrCNc",title:"new trick",artist:"ROSÉ"},
+  {id:"FyS5dAywkEo",title:"SaWaDiKa",artist:"LISA"},
+  {id:"sf02ugzPFE4",title:"CLICK",artist:"JISOO"},
+  {id:"fcnDmrtj6Sk",title:"Dai Dai",artist:"Shakira & Burna Boy"},
+  {id:"nUsrYVxrDwI",title:"Choosin' Texas",artist:"Ella Langley"},
+  {id:"78wrful9cVU",title:"drop dead",artist:"Olivia Rodrigo"},
+  {id:"6KjVYeQ9SRw",title:"Dracula",artist:"Tame Impala"},
+  {id:"3sur4BmjQt8",title:"So Easy (To Fall In Love)",artist:"Olivia Dean"},
+  {id:"mrV8kK5t0V8",title:"I Just Might",artist:"Bruno Mars"},
+  {id:"aWpw-Ynl0Yc",title:"Bass Persuades",artist:"Miley Cyrus"},
+  {id:"ko70cExuzZM",title:"The Fate of Ophelia",artist:"Taylor Swift"},
+  {id:"b4iVv91Z6lY",title:"SWIM",artist:"BTS"}
+];
+const TOP_SEED = [
+  {id:"nUsrYVxrDwI",title:"Choosin' Texas",artist:"Ella Langley"},
+  {id:"fRIhCiUVaKs",title:"BbY WOW",artist:"KAROL G, Judeline"},
+  {id:"78wrful9cVU",title:"drop dead",artist:"Olivia Rodrigo"},
+  {id:"6KjVYeQ9SRw",title:"Dracula",artist:"Tame Impala"},
+  {id:"3sur4BmjQt8",title:"So Easy (To Fall In Love)",artist:"Olivia Dean"},
+  {id:"fcnDmrtj6Sk",title:"Dai Dai",artist:"Shakira & Burna Boy"},
+  {id:"V9PVRfjEBTI",title:"BIRDS OF A FEATHER",artist:"Billie Eilish"},
+  {id:"FyS5dAywkEo",title:"SaWaDiKa",artist:"LISA"}
+];
+
+const STORE="gxm5_";
+const S={
+  get(k,f){ try{ const v=JSON.parse(localStorage.getItem(STORE+k)); return v==null?f:v;}catch{return f;} },
+  set(k,v){ try{ localStorage.setItem(STORE+k,JSON.stringify(v)); }catch{} },
+  list(){ return this.get("pl",[]); },
+  save(l){ this.set("pl",l); },
+  prefs(){ return Object.assign({repeat:"off",shuffle:false,vol:80,wisp:DEFAULT_WISP_URLS[0]}, this.get("prefs",{})); },
+  setPrefs(p){ this.set("prefs", Object.assign(this.prefs(),p)); }
+};
+const $=(s,c=document)=>c.querySelector(s);
+const $$=(s,c=document)=>[...c.querySelectorAll(s)];
+const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const phArt="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="8" fill="#17171e"/><text x="40" y="46" text-anc
