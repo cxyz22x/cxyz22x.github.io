@@ -219,7 +219,7 @@ function resetHttpSession(){
 async function ensureLibcurl(force){
   if (_libcurlReady && !force) return _libcurlReady;
   _libcurlReady = (async () => {
-    setTunnelChip("busy", "loading WASM\u2026");
+    setTunnelChip("busy", "loading WASM…");
     let lc = null;
     try {
       lc = await waitLibcurlObject(1500);
@@ -239,7 +239,7 @@ async function ensureLibcurl(force){
     const urls = loadSavedWispList();
     let lastErr = null;
     for (const url of urls){
-      setTunnelChip("busy", "wisp\u2026");
+      setTunnelChip("busy", "wisp…");
       try {
         applyWispUrl(lc, url);
         resetHttpSession();
