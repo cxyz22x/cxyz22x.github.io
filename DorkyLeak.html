@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>DorkyLeaks</title>
+<style>
+:root{--bg:#000;--s:#0c0c0c;--b:#1f1f1f;--t:#fff;--d:#8a8a8a;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b;--r:16px}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg)}
+body{color:var(--t);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;max-width:720px;margin:auto;padding:0 16px calc(32px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:rgba(0,0,0,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:calc(14px + env(safe-area-inset-top)) 0 12px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:26px;font-weight:800;letter-spacing:-1.2px}h1 span{color:var(--d)}
+.live{font-size:13px;font-weight:600;border:1px solid var(--b);background:var(--s);padding:6px 12px;border-radius:99px;display:flex;align-items:center;gap:7px}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--d);display:block}
+.live.on i{background:var(--t);animation:p 1s infinite}
+.live.ok i{background:var(--ok);animation:none}
+.live.bad i{background:var(--bad);animation:none}
+@keyframes p{50%{opacity:.2}}
+.prog{background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:none}
+.prog.show{display:block}
+.prog .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:10px;gap:10px}
+.prog .row span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prog .row span:last-child{color:var(--d);font-variant-numeric:tabular-nums;flex:none}
+.prog.paused .fill{background:var(--d)}
+.track{height:8px;background:#1a1a1a;border-radius:99px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--t);border-radius:99px;transition:width .35s ease}
+.progbtns{display:flex;gap:6px;margin-top:10px}
+.progbtns .btn{font-size:12px;padding:8px 12px;flex:1}
+.seg{display:flex;background:var(--s);border:1px solid var(--b);border-radius:12px;padding:3px;margin-bottom:10px;overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1;min-width:62px;border:0;background:none;color:var(--d);font:inherit;font-size:12.5px;font-weight:600;padding:9px 0;border-radius:9px;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--t);color:var(--bg)}
+.tab{display:none}.tab.on{display:block}
+.field{background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:12px 14px;margin-bottom:8px}
+.field label{display:block;font-size:11.5px;color:var(--d);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:6px}
+.field input[type=text],.field input[type=url],.field input[type=number],.field textarea{width:100%;background:none;border:0;color:var(--t);font:inherit;font-size:14px;outline:none;resize:vertical}
+.field input[type=number]{-moz-appearance:textfield}.field input[type=number]::-webkit-outer-spin-button,.field input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.field textarea{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:260px;display:block;padding:0}
+.tog{display:flex;align-items:center;justify-content:space-between;background:var(--s);border:1px solid var(--b);border-radius:12px;padding:11px 14px;margin-bottom:6px;cursor:pointer;font-size:13.5px;font-weight:500}
+.tog input{display:none}
+.tog .sw{width:36px;height:20px;background:#262626;border-radius:99px;position:relative;transition:.15s;flex:none}
+.tog .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--d);border-radius:50%;transition:.15s}
+.tog input:checked~.sw{background:var(--t)}
+.tog input:checked~.sw::after{transform:translateX(16px);background:var(--bg)}
+.tog small{color:var(--d);font-size:11.5px;display:block;margin-top:2px;font-weight:400}
+.drop{border:1.5px dashed var(--b);border-radius:var(--r);padding:44px 20px;text-align:center;cursor:pointer;transition:.15s;margin-bottom:12px}
+.drop:active,.drop.over{background:var(--s);border-color:var(--t)}
+.drop b{display:block;font-size:15px;margin-bottom:4px}
+.drop small{color:var(--d);font-size:12.5px}
+.btn{border:1px solid var(--b);background:var(--s);color:var(--t);font:inherit;font-size:14px;font-weight:600;padding:11px 16px;border-radius:12px;cursor:pointer;transition:.15s}
+.btn.pri{background:var(--t);color:var(--bg);border-color:var(--t)}
+.btn:active{transform:scale(.97)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.bar .btn{flex:1;min-width:80px;font-size:13px;padding:10px 12px}
+.hint{color:var(--d);font-size:12.5px;margin-bottom:14px;line-height:1.5}
+.hint code{background:var(--s);padding:2px 6px;border-radius:5px;font-size:11.5px}
+.list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.card{display:flex;align-items:center;gap:12px;background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:.15s}
+.card:active{background:#151515}
+.card .fl{font-size:22px;width:32px;text-align:center;flex:none}
+.card .mid{flex:1;min-width:0}
+.card .ad{font:600 14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .sub{color:var(--d);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.card .rt{text-align:right;flex:none}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;border:1px solid #333;padding:2px 8px;border-radius:99px;color:var(--t)}
+.tag.valid{border-color:var(--ok);color:var(--ok)}
+.tag.invalid{border-color:var(--bad);color:var(--bad)}
+.tag.crit{border-color:var(--t);background:var(--t);color:var(--bg)}
+.tag.warn{border-color:var(--warn);color:var(--warn)}
+.ms{display:block;color:var(--d);font-size:11.5px;margin-top:3px;font-variant-numeric:tabular-nums}
+.empty{text-align:center;color:var(--d);padding:48px 0}
+.empty .g{font-size:32px;opacity:.4;margin-bottom:10px}
+.log{background:var(--s);border:1px solid var(--b);border-radius:12px;padding:12px 14px;font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--d);max-height:320px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;margin-top:8px}
+.log .ok{color:var(--t)}
+.log .bad{color:var(--bad)}
+.log .warn{color:var(--warn)}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--s);border:1px solid var(--b);border-radius:12px;padding:12px 14px}
+.stat .n{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.stat .l{font-size:10.5px;color:var(--d);text-transform:uppercase;letter-spacing:.6px;margin-top:2px;font-weight:700}
+.group{margin-bottom:16px}
+.gh{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 8px}
+.gh h4{font-size:13px;font-weight:700;letter-spacing:-.2px}
+.gh .c{color:var(--d);font-size:12px;font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--t);color:var(--bg);font-weight:600;font-size:13px;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;z-index:10;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style></head><body>
+
+<header>
+  <h1>DorkyLeaks<span></span></h1>
+  <div class="live" id="live"><i></i><span id="liveTxt">idle</span></div>
+</header>
+
+<div class="prog" id="prog">
+  <div class="row"><span id="ptxt">Idle</span><span id="ppct">0%</span></div>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <div class="progbtns">
+    <button class="btn" id="pauseBtn" disabled>Pause</button>
+    <button class="btn" id="stopBtn" disabled>Stop</button>
+  </div>
+</div>
+
+<div class="seg" id="seg">
+  <button class="on" data-tab="crawl">Crawl</button>
+  <button data-tab="dork">Dork</button>
+  <button data-tab="files">Files</button>
+  <button data-tab="paths">Paths</button>
+  <button data-tab="results">Results</button>
+</div>
+
+<section class="tab on" id="tab-crawl">
+  <div class="field"><label>Target URL</label><input type="url" id="crawlUrl" placeholder="https://example.com" autocomplete="off" inputmode="url"></div>
+  <label class="tog">Follow same-origin links<input type="checkbox" id="optCrawl" checked><span class="sw"></span></label>
+  <label class="tog">Probe path wordlist<input type="checkbox" id="optProbe" checked><span class="sw"></span></label>
+  <label class="tog">Auto-download matching files<input type="checkbox" id="optDl" checked><span class="sw"></span></label>
+  <label class="tog">Skip context patterns on HTML<small>fewer false positives — only prefix-anchored rules run</small><input type="checkbox" id="optStrict" checked><span class="sw"></span></label>
+  <div class="bar" style="margin-top:12px"><button class="btn pri" id="crawlGo">Start crawl</button></div>
+  <div class="log" id="crawlLog">ready.</div>
+</section>
+
+<section class="tab" id="tab-dork">
+  <div class="field"><label>PublicWWW query</label><input type="text" id="dorkQ" placeholder='e.g. "sk_live_" filetype:env' autocomplete="off"></div>
+  <div class="field"><label>Max URLs</label><input type="number" id="dorkMax" value="100" min="1" max="5000"></div>
+  <label class="tog">Crawl each result<input type="checkbox" id="dorkCrawl" checked><span class="sw"></span></label>
+  <label class="tog">Probe paths on each<input type="checkbox" id="dorkProbe" checked><span class="sw"></span></label>
+  <label class="tog">Skip context patterns on HTML<small>fewer false positives — only prefix-anchored rules run</small><input type="checkbox" id="optStrict2" checked><span class="sw"></span></label>
+  <div class="bar" style="margin-top:12px"><button class="btn pri" id="dorkGo">Run dork</button></div>
+  <div class="log" id="dorkLog">ready.</div>
+</section>
+
+<section class="tab" id="tab-files">
+  <div class="drop" id="drop"><b>Drop files here</b><small>or tap to browse — scan happens locally</small></div>
+  <input type="file" id="fileInput" multiple hidden>
+  <div class="list" id="fileList"></div>
+  <div class="bar"><button class="btn" id="clearFiles">Clear files</button><button class="btn pri" id="scanFiles">Scan</button></div>
+</section>
+
+<section class="tab" id="tab-paths">
+  <div class="hint">One path per line. <code>#</code> starts a comment. These are prepended to each target's origin during probing.</div>
+  <div class="field"><textarea id="pathsEditor" spellcheck="false"></textarea></div>
+  <div class="bar"><button class="btn" id="pathsReset">Reset default</button><button class="btn pri" id="pathsSave">Save</button></div>
+  <div class="hint" id="pathsCount"></div>
+</section>
+
+<section class="tab" id="tab-results">
+  <div class="bar"><button class="btn" id="exportJson">Export JSON</button><button class="btn" id="exportTxt">Export TXT</button><button class="btn" id="clearResults">Clear</button></div>
+  <div id="resultsBody"><div class="empty"><div class="g">◇</div>No findings yet</div></div>
+</section>
+
+<div class="toast" id="toast">copied</div>
+
+<script type="module">
+function workerMain() {
+  let L;
+  const to = (p, ms) => Promise.race([p, new Promise((_, j) => setTimeout(() => j(0), ms))]);
+  self._jar = new Map();
+
+  const absorbCookies = sc => {
+    if (!sc) return;
+    for (const chunk of String(sc).split(/,(?=\s*[A-Za-z0-9_-]+\s*=)/)) {
+      const kv = chunk.split(';')[0].trim();
+      if (!kv) continue;
+      const eq = kv.indexOf('=');
+      if (eq > 0) self._jar.set(kv.slice(0, eq), kv.slice(eq + 1));
+    }
+  };
+  const jarHeader = () => [...self._jar.entries()].map(([k, v]) => k + '=' + v).join('; ');
+
+  self.onmessage = async e => {
+    const m = e.data;
+    if (m.t === 'init') {
+      try {
+        importScripts(m.lib);
+        L = self.libcurl;
+        if (!L) throw new Error('libcurl global missing');
+        await L.load_wasm();
+      } catch (e1) {
+        try {
+          ({ libcurl: L } = await import(m.libm));
+          await L.load_wasm();
+        } catch (e2) {
+          return postMessage({ t: 'ready', ok: false, why: 'load: ' + ((e1 && e1.message) || e1) + ' | ' + ((e2 && e2.message) || e2) });
+        }
+      }
+      let tried = '';
+      for (const w of m.wisp) {
+        try {
+          L.set_websocket(w);
+          await Promise.any(m.probes.map(u =>
+            to(L.fetch(u), 12000).then(r => { if (!r || typeof r.status !== 'number') throw 0; })
+          ));
+          return postMessage({ t: 'ready', ok: true, wisp: w });
+        } catch { tried += ' ' + w; }
+      }
+      postMessage({ t: 'ready', ok: false, why: 'wisp:' + tried });
+    } else if (m.t === 'get') {
+      try {
+        const headers = { ...(m.headers || {}) };
+        const jar = jarHeader();
+        if (jar && !headers.Cookie) headers.Cookie = jar;
+        else if (jar && headers.Cookie) headers.Cookie = headers.Cookie + '; ' + jar;
+        if (m.cookie) headers.Cookie = headers.Cookie ? headers.Cookie + '; ' + m.cookie : m.cookie;
+
+        const r = await to(L.fetch(m.url, { headers, redirect: m.redirect || 'follow' }), m.ms || 25000);
+        if (!r || typeof r.status !== 'number') {
+          return postMessage({ t: 'got', id: m.id, text: '', status: 0, ct: '', setCookie: '' });
+        }
+        const text = await r.text();
+        const h = r.headers && (r.headers.get ? r.headers.get('content-type') : r.headers['content-type']) || '';
+        let sc = '';
+        if (r.headers && r.headers.get) sc = r.headers.get('set-cookie') || '';
+        else if (r.headers) sc = r.headers['set-cookie'] || '';
+        absorbCookies(sc);
+        postMessage({ t: 'got', id: m.id, text, status: r.status, ct: h, url: m.url, setCookie: sc });
+      } catch (e) {
+        postMessage({ t: 'got', id: m.id, text: '', status: 0, ct: '', setCookie: '', err: String(e && e.message || e) });
+      }
+    }
+  };
+}
+
+const LIBCURL = 'https://cdn.jsdelivr.net/npm/libcurl.js@0.7/libcurl_full.js';
+const LIBCURL_M = LIBCURL.replace(/\.js$/, '.mjs');
+const WISP = [...(new URLSearchParams(location.search).get('wisp') || '').split(','), 'wss://wisp.mercurywork.shop/'].map(x => x.trim()).filter(Boolean);
+const PROBES = ['http://example.com/', 'http://httpbin.org/ip'];
+
+const WORKERS = 4;
+const CRAWL_MAX = 200;
+const CRAWL_CONC = 20;
+const PROBE_CONC = 40;
+const MAX_FILE = 50 * 1024 * 1024;
+
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+  'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+];
+const ua = () => USER_AGENTS[(Math.random() * USER_AGENTS.length) | 0];
+
+const HIGH_VALUE = [
+  '/.env','/.env.local','/.env.production','/.env.development',
+  '/config.php','/wp-config.php','/configuration.php','/settings.php',
+  '/config.json','/settings.json','/local.settings.json','/secrets.yml',
+  '/credentials','/api_keys','/keys.json','/secret','/secrets',
+  '/admin','/login','/api','/graphql','/swagger','/docs',
+  '/.git/config','/.git/HEAD','/.gitignore','/.htaccess',
+  '/robots.txt','/sitemap.xml','/docker-compose.yml','/docker-compose.yaml',
+];
+
+const DEFAULT_PATHS = `.git/config
+.git/HEAD
+.git/index
+.git-credentials
+.gitignore
+.env
+.env.local
+.env.dev
+.env.development
+.env.staging
+.env.prod
+.env.production
+.env.backup
+.env.old
+.env.save
+.envrc
+.aws/credentials
+.aws/config
+.azure/accessTokens.json
+.config/gcloud/application_default_credentials.json
+.ssh/id_rsa
+.ssh/id_ed25519
+.ssh/authorized_keys
+.docker/config.json
+.npmrc
+.pypirc
+.netrc
+.pgpass
+.my.cnf
+.htpasswd
+.htaccess
+.vault-token
+.infisical.json
+.sops.yaml
+.kube/config
+.terraform/terraform.tfstate
+.s3cfg
+.composer-auth.json
+.cargo/credentials
+.travis.yml
+.gitlab-ci.yml
+.circleci/config.yml
+.github/workflows/ci.yml
+config.json
+config.yaml
+config.yml
+config.js
+config.php
+appsettings.json
+composer.json
+package.json
+yarn.lock
+requirements.txt
+pyproject.toml
+go.mod
+pom.xml
+Procfile
+vercel.json
+netlify.toml
+serverless.yml
+docker-compose.yml
+docker-compose.prod.yml
+Dockerfile
+fly.toml
+main.tf
+terraform.tfvars
+terraform.tfstate
+values.yaml
+.nvmrc
+backup
+backup.sql
+dump.sql
+data.sql
+database.sql
+db.sql
+1.sql
+actuator
+actuator/env
+actuator/health
+actuator/heapdump
+actuator/info
+actuator/metrics
+actuator/prometheus
+actuator/threaddump
+jmx-console/
+invoker/JMXInvokerServlet
+rails/db
+rails/info
+sidekiq
+telescope
+horizon
+_profiler
+_profiler/phpinfo
+info.php
+phpinfo.php
+php_info.php
+test.php
+setup.php
+i.php
+apc.php
+phpmyadmin/
+phpMyAdmin/
+pma/
+adminer.php
+adminer/
+phppgadmin
+pgadmin
+pgadmin/login
+config.php
+configuration.php
+wp-config.php
+wp-config-sample.php
+wp-admin/
+wp-admin/admin-ajax.php
+wp-login.php
+wp-json/
+wp-json/wp/v2/users
+wp-json/wp/v2/pages
+wp-json/wp/v2/posts
+wp-json/wc/v3/orders
+wp-json/wc/v3/products
+wp-json/wc/v3/system_status
+wp-content/debug.log
+xmlrpc.php
+admin
+admin/
+admin/login
+admin/index.php
+admin/api.php
+admin/config
+admin/config.json
+admin/metrics
+admin/pprof
+admin/queues
+admin/roles
+admin/stats
+admin/users
+admin-console/
+administrator/
+console
+console/api/login
+system/console
+system/console/configMgr
+.DS_Store
+robots.txt
+sitemap.xml
+health
+healthz
+health/live
+health/ready
+-/health
+-/healthy
+-/liveness
+-/readiness
+-/ready
+-/whoami
+metrics
+metrics/cadvisor
+status
+status.json
+statusz
+ping
+info
+server-status
+server-info
+nginx_status
+stub_status
+haproxy?stats
+configz
+debug/vars
+debug/pprof
+debug/pprof/cmdline
+debug/pprof/heap
+debug/pprof/profile
+localapi/v0/bugreport
+localapi/v0/metrics
+localapi/v0/status
+config_dump
+api/v1/
+api/v1/namespaces
+api/v1/namespaces/default/pods
+api/v1/namespaces/default/pods/exec
+api/v1/namespaces/default/pods/log
+api/v1/namespaces/kube-system/configmaps
+api/v1/namespaces/kube-system/secrets
+api/v1/nodes
+api/v1/pods
+api/v1/configmaps
+api/v1/secrets
+api/v1/serviceaccounts
+api/v1/services
+apis/apps/v1/deployments
+apis/apps/v1/statefulsets
+apis/apps/v1/daemonsets
+apis/batch/v1/jobs
+apis/batch/v1/cronjobs
+apis/rbac.authorization.k8s.io/v1/clusterroles
+apis/networking.k8s.io/v1/ingresses
+version
+containers/json?all=true
+images/json
+networks
+volumes
+swarm
+pods
+runningpods
+v1.40/configs
+v1.40/containers/json
+v2/_catalog
+v2/tags/list
+_cat/health
+_cat/indices
+_cat/nodes
+_cluster/health
+_cluster/stats
+_count
+_search
+_mapping
+_nodes
+_nodes/stats
+_stats
+_security/
+_xpack
+_bulk
+_aliases
+_cluster/settings
+app/kibana
+kibana/api/status
+grafana/api/health
+grafana/api/admin/settings
+grafana/api/admin/stats
+grafana/api/alerting/
+grafana/api/dashboards
+grafana/api/datasources
+grafana/api/org
+grafana/api/search
+grafana/api/users
+prometheus/api/v1/alerts
+prometheus/api/v1/query
+prometheus/api/v1/rules
+prometheus/api/v1/status/config
+prometheus/api/v1/targets
+prometheus/config
+prometheus/targets
+alertmanager/api/v2/alerts
+alertmanager/api/v2/status
+v1/sys/health
+v1/sys/mounts
+v1/sys/auth
+v1/sys/policies/acl
+v1/sys/seal-status
+v1/sys/host-info
+v1/secret/data/
+v1/secret/
+v1/kv/
+v1/status/leader
+v1/status/peers
+v1/agent/self
+v1/agent/members
+v1/catalog/nodes
+v1/catalog/services
+v1/namespaces
+v1/auth/token/lookup-self
+v1/acl/tokens
+ui/vault/
+consul/
+ui/
+nomad/
+argocd/api/version
+argocd/api/v1/applications
+argocd/api/v1/clusters
+argocd/api/v1/projects
+argocd/api/v1/repositories
+argocd/api/v1/session
+argocd/api/v1/settings
+jenkins/script
+jenkins/env-vars.html
+script
+scriptText
+jkstatus
+teamcity/guestAuth/app/rest/agents
+teamcity/guestAuth/app/rest/builds
+teamcity/guestAuth/app/rest/projects
+teamcity/guestAuth/app/rest/server
+teamcity/guestAuth/app/rest/users
+_apis/build/builds
+_apis/connectionData
+_apis/projects
+explore/projects
+explore/repos
+explore/users
+api/v4/projects
+api/v4/groups
+api/v4/users
+api/v4/version
+api/v4/applications
+api/v4/audit_events
+api/v4/jobs
+api/v4/keys
+api/v4/license
+api/v4/metadata
+api/v4/namespaces
+api/v4/personal_access_tokens
+api/v4/runners
+api/v4/sidekiq
+api/v4/todos
+api/v4/webhooks
+artifactory/api/repositories
+artifactory/api/security/apiKey
+artifactory/api/security/users
+artifactory/api/system/configuration
+artifactory/api/system/version
+service/rest/v1/repositories
+service/rest/v1/script
+service/rest/v1/security/users
+service/rest/v1/status
+api/v2.0/projects
+api/v2.0/repositories
+api/v2.0/health
+api/v2.0/search
+api/v2.0/systeminfo
+api/v2.0/users
+kafdrop/
+rabbitmq/api/overview
+api/overview
+api/queues
+api/exchanges
+api/connections
+api/nodes
+api/channels
+api/vhosts
+api/definitions
+mongo-express/
+redis-commander/
+redisinsight/
+couchdb
+_all_dbs
+_utils/
+pghero/connections
+pghero/queries
+_admin/aardvark
+_api/database
+_api/user
+_api/version
+_api/cluster/health
+mysql/admin/
+influxdb/ping
+influxdb/query
+influxdb/debug/vars
+?query=SHOW+DATABASES
+swagger
+swagger.json
+swagger.yaml
+swagger-ui.html
+swagger-ui/
+swagger-resources
+swagger/doc.json
+swagger/v1/swagger.json
+swagger/v2/swagger.json
+api-docs
+v2/api-docs
+v3/api-docs
+api/swagger.json
+api/swagger.yaml
+api/spec/swagger.json
+api/swagger-resources
+api/swagger-ui.html
+openapi.json
+openapi.yaml
+redoc
+graphql
+graphiql
+graphql/graphql
+graphql/schema.json
+graphql.php
+graphql-console
+graphql-playground
+graphql/v1
+___graphql
+api/graphql
+v1/graphql
+v2/graphql
+v3/graphql
+v1/graphiql
+altair
+playground
+latest/meta-data/
+latest/meta-data/iam/security-credentials/
+latest/user-data
+computeMetadata/v1/
+computeMetadata/v1/instance/service-accounts/default/token
+jaeger/api/services
+jaeger/api/traces
+jaeger/search
+zipkin/api/v2/services
+zipkin/api/v2/spans
+loki/api/v1/labels
+loki/api/v1/query
+loki/api/v1/rules
+loki/config
+loki/ready
+tempo/api/search
+tempo/config
+tempo/status
+netdata/api/v1/alarms
+netdata/api/v1/charts
+netdata/api/v1/info
+doppler/
+infisical/
+bitwarden/
+1password.env
+superset/health
+superset/api/v1/chart/
+superset/api/v1/database/
+dagster/graphql
+dagit/
+airflow/
+airflow/api/v1/config
+airflow/api/v1/connections
+airflow/api/v1/dags
+airflow/api/v1/health
+airflow/api/v1/variables
+airflow/api/v1/version
+prefect/api/admin/settings
+prefect/api/deployments
+prefect/api/flow_runs
+prefect/api/flows
+mlflow/api/2.0/mlflow/experiments/list
+mlflow/api/2.0/mlflow/runs/search
+label-studio/api/projects
+flower/api/tasks
+ray/dashboard/
+ray/api/actors
+ray/api/cluster_status
+ray/api/jobs/
+ray/api/nodes
+spark/api/v1/applications
+spark/history/
+flink/v1/config
+flink/v1/jobs
+flink/v1/overview
+nifi-api/controller/config
+nifi-api/flow/about
+nifi-api/flow/process-groups/root
+nifi-api/flow/status
+zeppelin/api/configurations/all
+zeppelin/api/interpreter
+zeppelin/api/notebook
+hazelcast/health
+hazelcast/rest/cluster
+minio/health/cluster
+minio/health/live
+minio/health/ready
+storage/v1/bucket
+jupyter/tree
+jupyter/api/contents
+jupyter/api/kernels
+jupyter/api/sessions
+jupyter/api/terminals
+jupyterhub/hub/api
+kubeflow/jupyter/
+kubeflow/pipeline/apis/v1beta1/pipelines
+v1/models
+v1/chat/completions
+v1/completions
+v1/embeddings
+ollama/api/tags
+ollama/api/chat
+ollama/api/generate
+langflow/api/v1/
+langgraph/assistants
+langgraph/runs
+langgraph/threads
+langserve/batch
+langserve/invoke
+langserve/playground/
+flowise/api/v1/apikey
+flowise/api/v1/assistants
+flowise/api/v1/chatflows
+flowise/api/v1/credentials
+litellm/health
+litellm/models
+litellm/team/list
+qdrant/cluster
+qdrant/collections
+qdrant/dashboard/
+chroma/api/v1/collections
+chroma/api/v1/heartbeat
+_next/data/
+_buildManifest.js
+_ssgManifest.js
+_payload.json
+__nuxt__/
+_nuxt/
+_worker.js
+@vite/client
+storybook/
+storybook/iframe.html
+livewire/livewire.js
+livewire/update
+sanctum/csrf-cookie
+unleash/api/admin/features
+unleash/api/client/features
+flagsmith/api/v1/environments/
+flagsmith/api/v1/flags/
+flipper/features
+growthbook/api/experiments
+growthbook/api/features
+portainer/
+portainer/api/endpoints
+portainer/api/registries
+portainer/api/settings
+portainer/api/stacks
+portainer/api/status
+portainer/api/users
+rest/api/2/serverInfo
+rest/api/latest/serverInfo
+rest/api/2/dashboard
+rest/api/2/project
+rest/api/content
+rest/api/space
+rest/api/user/current
+rest/credentials
+rest/license
+rest/nodes
+rest/settings
+rest/users
+rest/variables
+rest/workflows
+solr/
+solr/admin/
+solr/admin/cores
+nuxeo/
+cockpit/
+filebrowser/api/login
+filebrowser/api/settings
+filebrowser/api/users
+nextcloud/status.php
+nextcloud/ocs/v2.php/cloud/capabilities
+nextcloud/ocs/v2.php/cloud/users
+remote.php/dav/
+remote/login
+seafile/api2/
+directus/server/health
+directus/server/info
+directus/collections
+directus/fields
+directus/users
+strapi/admin
+strapi/api
+ghost/api/admin/config/
+ghost/api/admin/integrations/
+ghost/api/admin/settings/
+ghost/api/admin/users/
+api/health
+api/health/full
+api/status
+api/v1/status/active_queries
+api/v2/health
+api/v2/ping/
+api/v2/ready
+api/v2/buildinfo
+api/v2/me/
+api/v2/users
+api/v2/tokens/
+api/v2/setup
+api/v2/config
+api/v2/dashboards
+api/v3/settings
+api/v3/tokens
+api/v3/users
+api/v3/clusters
+api
+api/
+api/v1/
+api/v2/
+api/v3/
+api/v4/
+api/v5/
+api/v6/
+api/version
+api/info
+api/config
+api/settings
+api/users
+api/admin
+api/auth/login
+api/auth/session
+api/auth/signin
+api/auth/csrf
+api/auth/providers
+api/login
+api/logout
+api/token
+api/tokens
+api/refresh
+api/me
+api/self
+api/current
+manager/html
+manager/status
+manager/stats
+manager/logs
+manager/info
+manager/configuration
+host-manager/html
+owa/
+owa/auth/logon.aspx
+ecp/
+ews/
+checkout/
+cart/
+payment-method/
+payment/
+add-payment-method/
+paypal/sdk
+sdk/
+autodiscover/
+mapi/nspi
+adfs/ls/
+sap/bc/gui/sap/its/webgui
+CFIDE/administrator/
+crx/de/index.jsp
+libs/granite/core/content/login.html
+.well-known/security.txt
+.well-known/openid-configuration
+.well-known/oauth-authorization-server
+.well-known/jwks.json
+.well-known/webfinger
+.well-known/nodeinfo
+.well-known/ai-plugin.json
+.well-known/assetlinks.json
+.well-known/host-meta
+.well-known/matrix/client
+.well-known/matrix/server
+.well-known/mcp.json
+..%2f..%2f..%2f..%2f..%2f..%2f..%2fetc/passwd
+..%5c..%5c..%5c..%5c..%5c..%5c..%5cetc/passwd
+tmui/login.jsp`;
+
+/* ==========================================================================
+   Patterns — strict:1 = prefix-anchored, runs everywhere. Untagged = context
+   or shape-based, skipped on HTML (toggleable).
+   ========================================================================== */
+const PLACEHOLDERS = ['example','placeholder','changeme','change_me','change-me','your_','your-','my_','my-','insert_','insert-','test_key','test-key','testkey','dummy','sample','sample-','xxxxx','aaaaa','foobar','foo_bar','foo-bar','redacted','fake_','fake-','<your','todo:','fixme'];
+const hasPH = s => { const l = s.toLowerCase(); return PLACEHOLDERS.some(t => l.includes(t)); };
+const distinct = s => new Set(s).size;
+
+const BAD_VALUES = new Set([
+  'undefined','null','true','false','nan','none','test','example',
+  'localhost','password','secret','token','apikey','api_key','api-key',
+  'your_api_key','your-key','your-key-here','changeme','change_me',
+  'yoursecret','yourtoken','placeholder','value','string','number',
+  'object','array','function','error','success','failed','active',
+  'enabled','disabled','default','production','development','staging',
+  'something','anything','whatever','webhook','webhooks','bearer','basic',
+  'content-type','application','text/plain','utf-8','gzip','deflate',
+  'username','user_name','user-name','account','apikeyhere','secrethere'
+]);
+
+function looksLikeGarbage(val) {
+  if (!val) return true;
+  const trimmed = String(val).trim();
+  if (!trimmed) return true;
+  if (BAD_VALUES.has(trimmed.toLowerCase())) return true;
+  // all same character, or nearly
+  if (trimmed.length >= 8 && new Set(trimmed).size <= 2) return true;
+  // contains raw whitespace (real secrets don't)
+  if (/\s/.test(trimmed)) return true;
+  // HTML artifacts
+  if (/[<>]/.test(trimmed)) return true;
+  // looks like a path fragment, not a secret
+  if (/^[./~]/.test(trimmed)) return true;
+  // pure hex shorter than 16 chars is never a secret
+  if (/^[a-f0-9]{1,15}$/i.test(trimmed)) return true;
+  return false;
+}
+
+function looksLikeHtml(s) {
+  if (!s) return false;
+  const head = String(s).slice(0, 2000).toLowerCase();
+  return head.includes('<!doctype html') ||
+         /<html[\s>]/.test(head) ||
+         (head.includes('<head') && head.includes('<script')) ||
+         (head.includes('<meta ') && head.includes('<body'));
+}
+
+const RULES = [
+  // ---- prefix-anchored (strict) ----
+  {n:'OpenAI API Key', r:/\bsk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20}\b/g, strict:1},
+  {n:'OpenAI Project Key', r:/\bsk-proj-[a-zA-Z0-9_-]{80,200}\b/g, strict:1},
+  {n:'OpenAI Service Key', r:/\bsk-svcacct-[a-zA-Z0-9_-]{80,200}\b/g, strict:1},
+  {n:'Anthropic API Key', r:/\bsk-ant-api[0-9]{2}-[a-zA-Z0-9_-]{80,140}\b/g, strict:1},
+  {n:'Anthropic Admin Key', r:/\bsk-ant-admin[0-9]{2}-[a-zA-Z0-9_-]{80,140}\b/g, strict:1},
+  {n:'OpenRouter API Key', r:/\bsk-or-v1-[a-f0-9]{64}\b/g, strict:1},
+  {n:'Groq API Key', r:/\bgsk_[a-zA-Z0-9]{48,60}\b/g, strict:1},
+  {n:'Perplexity API Key', r:/\bpplx-[a-f0-9]{40,64}\b/g, strict:1},
+  {n:'Replicate API Token', r:/\br8_[a-zA-Z0-9]{36,40}\b/g, strict:1},
+  {n:'Hugging Face Token', r:/\bhf_[a-zA-Z0-9]{30,40}\b/g, strict:1},
+  {n:'Hugging Face Org Token', r:/\bapi_org_[a-zA-Z0-9]{30,40}\b/g, strict:1},
+  {n:'xAI API Key', r:/\bxai-[a-zA-Z0-9]{80,90}\b/g, strict:1},
+  {n:'Voyage AI Key', r:/\bpa-[a-zA-Z0-9_-]{40,60}\b/g, strict:1},
+  {n:'Fireworks AI Key', r:/\bfw_[a-zA-Z0-9]{24,}\b/g, strict:1},
+  {n:'LangSmith Key', r:/\blsv2_[a-zA-Z0-9_-]{32,}\b/g, strict:1},
+  {n:'GitHub PAT Classic', r:/\bghp_[a-zA-Z0-9]{36}\b/g, v:'github', strict:1},
+  {n:'GitHub PAT Fine', r:/\bgithub_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}\b/g, v:'github', strict:1},
+  {n:'GitHub OAuth Token', r:/\bgho_[a-zA-Z0-9]{36}\b/g, v:'github', strict:1},
+  {n:'GitHub User-to-Server', r:/\bghu_[a-zA-Z0-9]{36}\b/g, strict:1},
+  {n:'GitHub Server-to-Server', r:/\bghs_[a-zA-Z0-9]{36}\b/g, strict:1},
+  {n:'GitHub Refresh Token', r:/\bghr_[a-zA-Z0-9]{36}\b/g, v:'github', strict:1},
+  {n:'GitHub App Token', r:/\bv1\.[0-9a-f]{40}\b/g, strict:1},
+  {n:'GitLab PAT', r:/\bglpat-[a-zA-Z0-9_-]{20,}\b/g, strict:1},
+  {n:'GitLab Pipeline Token', r:/\bglptt-[a-zA-Z0-9_-]{20,}\b/g, strict:1},
+  {n:'GitLab Runner Token', r:/\bglrt-[a-zA-Z0-9_-]{20,}\b/g, strict:1},
+  {n:'AWS Access Key ID', r:/\bAKIA[0-9A-Z]{16}\b/g, strict:1},
+  {n:'AWS Temp Access Key', r:/\bASIA[0-9A-Z]{16}\b/g, strict:1},
+  {n:'Google API Key', r:/(?<![A-Za-z0-9_-])AIza[A-Za-z0-9_-]{35,}(?![A-Za-z0-9_-])/g, strict:1},
+  {n:'Google OAuth Token', r:/(?<![A-Za-z0-9])ya29\.[A-Za-z0-9_-]{50,}(?![A-Za-z0-9])/g, v:'gcp', strict:1},
+  {n:'Google OAuth Refresh', r:/\b1\/\/[0-9A-Za-z_-]{40,}\b/g, minDistinct:15, strict:1},
+  {n:'GCP Service Account Key', r:/"private_key"\s*:\s*"(-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]+?-----END (?:RSA )?PRIVATE KEY-----)"/g, strict:1},
+  {n:'Azure Client Secret', r:/\b([a-zA-Z0-9~._-]{3}8Q~[a-zA-Z0-9._~-]{34})\b/g, minDistinct:20, strict:1},
+  {n:'Stripe Live Secret', r:/\b(sk_live_[0-9a-zA-Z]{24,100})\b/g, v:'stripe', strict:1},
+  {n:'Stripe Test Secret', r:/\b(sk_test_[0-9a-zA-Z]{24,100})\b/g, v:'stripe', strict:1},
+  {n:'Stripe Live Publishable', r:/\b(pk_live_[0-9a-zA-Z]{24,100})\b/g, strict:1},
+  {n:'Stripe Test Publishable', r:/\b(pk_test_[0-9a-zA-Z]{24,100})\b/g, strict:1},
+  {n:'Stripe Restricted Key', r:/\b(rk_live_[0-9a-zA-Z]{24,100})\b/g, v:'stripe', strict:1},
+  {n:'Stripe Connect Key', r:/\b(sk_connect_[0-9a-zA-Z]{24,100})\b/g, strict:1},
+  {n:'Stripe Webhook Secret', r:/\b(whsec_[a-zA-Z0-9]{16,64})\b/g, strict:1},
+  {n:'PayPal Braintree', r:/\b(access_token\$production\$[0-9a-z]{16}\$[0-9a-f]{32})\b/g, strict:1},
+  {n:'Square Access Token', r:/\b(sq0atp-[A-Za-z0-9_-]{22,})\b/g, strict:1},
+  {n:'Square OAuth Secret', r:/\b(sq0csp-[A-Za-z0-9_-]{40,})\b/g, strict:1},
+  {n:'Paddle Live Key', r:/\b(pdl_live_[a-zA-Z0-9]{40,})\b/g, strict:1},
+  {n:'Paddle Sandbox Key', r:/\b(pdl_sdbx_[a-zA-Z0-9]{40,})\b/g, strict:1},
+  {n:'Razorpay Key', r:/\b(rzp_(?:live|test)_[a-zA-Z0-9]{14,})\b/g, strict:1},
+  {n:'WooCommerce Key', r:/\b(ck_[a-fA-F0-9]{40,64})\b/g, strict:1},
+  {n:'WooCommerce Secret', r:/\b(cs_[a-fA-F0-9]{40,64})\b/g, strict:1},
+  {n:'Shopify Access Token', r:/\b(shpat_[a-fA-F0-9]{32})\b/g, strict:1},
+  {n:'Shopify Custom App', r:/\b(shpca_[a-fA-F0-9]{32})\b/g, strict:1},
+  {n:'Shopify Private App', r:/\b(shppa_[a-fA-F0-9]{32})\b/g, strict:1},
+  {n:'Shopify Shared Secret', r:/\b(shpss_[a-fA-F0-9]{32})\b/g, strict:1},
+  {n:'Slack Bot Token', r:/\b(xoxb-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,})\b/g, v:'slack', strict:1},
+  {n:'Slack User Token', r:/\b(xoxp-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,})\b/g, v:'slack', strict:1},
+  {n:'Slack App Token', r:/\b(xapp-[0-9]-[A-Za-z0-9]{10,}-[0-9]{10,}-[a-zA-Z0-9]{60,})\b/g, v:'slack', strict:1},
+  {n:'Slack Webhook', r:/(https:\/\/hooks\.slack\.com\/services\/T[a-zA-Z0-9_]{8,}\/B[a-zA-Z0-9_]{8,}\/[a-zA-Z0-9_]{24,})/g, strict:1},
+  {n:'SendGrid API Key', r:/\b(SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43})\b/g, strict:1},
+  {n:'Mailgun API Key', r:/\b(key-[0-9a-zA-Z]{32})\b/g, strict:1},
+  {n:'Mailchimp API Key', r:/\b([0-9a-f]{32}-us\d{1,2})\b/g, strict:1},
+  {n:'Discord Bot Token', r:/(?<![A-Za-z0-9_-])([A-Za-z0-9_-]{24}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,})(?![A-Za-z0-9_-])/g, strict:1},
+  {n:'Discord Webhook', r:/(https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+)/g, strict:1},
+  {n:'Telegram Bot Token', r:/(?<![\w])(\d{8,10}:[A-Za-z0-9_-]{35})(?![A-Za-z0-9_-])/g, strict:1},
+  {n:'Facebook Token', r:/\b(EAACEdEose0cBA[0-9A-Za-z]+)\b/g, minLen:41, strict:1},
+  {n:'Twitter Bearer', r:/\b(AAAAAAAAAAAAAAAAAAAAA[A-Za-z0-9%]{50,})\b/g, strict:1},
+  {n:'Auth0 Domain', r:/\b([a-zA-Z0-9_-]+\.auth0\.com)\b/g, strict:1},
+  {n:'Okta API Token', r:/\b(00[A-Za-z0-9_-]{40,60})\b/g, minDistinct:20, strict:1},
+  {n:'Supabase Key', r:/\b(eyJ[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]{43,})\b/g, strict:1},
+  {n:'Firebase Key', r:/\b(AAAA[A-Za-z0-9_-]{7}:[A-Za-z0-9_-]{140,})\b/g, strict:1},
+  {n:'DigitalOcean PAT', r:/\b(dop_v1_[a-f0-9]{64})\b/g, strict:1},
+  {n:'DigitalOcean OAuth', r:/\b(doo_v1_[a-f0-9]{64})\b/g, strict:1},
+  {n:'DigitalOcean Refresh', r:/\b(dor_v1_[a-f0-9]{64})\b/g, strict:1},
+  {n:'Fly.io Token', r:/\b(FlyV1 [A-Za-z0-9+/=_-]{40,})\b/g, strict:1},
+  {n:'Render API Key', r:/\b(rnd_[a-zA-Z0-9]{24,})\b/g, strict:1},
+  {n:'Neon API Key', r:/\b(napi_[a-zA-Z0-9]{40,})\b/g, strict:1},
+  {n:'PlanetScale Token', r:/\b(pscale_tkn_[a-zA-Z0-9_]{40,})\b/g, strict:1},
+  {n:'PlanetScale Password', r:/\b(pscale_pw_[a-zA-Z0-9_]{40,})\b/g, strict:1},
+  {n:'Grafana Cloud Key', r:/\b(glc_[A-Za-z0-9+/=_-]{32,})\b/g, strict:1},
+  {n:'Grafana Service Account', r:/\b(glsa_[A-Za-z0-9]{32,})\b/g, strict:1},
+  {n:'Vercel Blob Token', r:/\b(vercel_blob_rw_[A-Za-z0-9]{20,})\b/g, strict:1},
+  {n:'New Relic API Key', r:/\b(NRAK-[A-Za-z0-9]{27})\b/g, strict:1},
+  {n:'New Relic License', r:/\b([a-f0-9]{32}NRAL)\b/g, strict:1},
+  {n:'New Relic Insights Key', r:/\b(NRII-[A-Za-z0-9_-]{32})\b/g, strict:1},
+  {n:'Sentry DSN', r:/(https?:\/\/[a-f0-9]+@(?:o\d+\.)?(?:[a-z0-9-]+\.)?sentry\.io\/\d+)/g, strict:1},
+  {n:'Sentry Auth Token', r:/\b(sntrys_[A-Za-z0-9_-]{40,})\b/g, strict:1},
+  {n:'PostHog API Key', r:/\b(phc_[a-zA-Z0-9]{40,})\b/g, strict:1},
+  {n:'PostHog Personal Key', r:/\b(phx_[a-zA-Z0-9]{40,})\b/g, strict:1},
+  {n:'HubSpot PAT', r:/\b(pat-(?:na|eu)1-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\b/g, strict:1},
+  {n:'Postman API Key', r:/\b(PMAK-[a-f0-9]{24}-[a-f0-9]{24})\b/g, strict:1},
+  {n:'Databricks Token', r:/\b(dapi[a-f0-9]{32})\b/g, strict:1},
+  {n:'Databricks OAuth Secret', r:/\b(dose[a-f0-9]{32})\b/g, strict:1},
+  {n:'dbt Cloud Token', r:/\b(dbtc_[a-zA-Z0-9_-]{40,})\b/g, strict:1},
+  {n:'Sourcegraph Token', r:/\b(sgp_[A-Za-z0-9]{40,})\b/g, strict:1},
+  {n:'SonarQube Token', r:/\b(squ_[a-f0-9]{40})\b/g, strict:1},
+  {n:'NPM Token', r:/\b(npm_[a-zA-Z0-9]{36})\b/g, strict:1},
+  {n:'PyPI Token', r:/\b(pypi-[A-Za-z0-9_-]{50,})\b/g, strict:1},
+  {n:'NuGet API Key', r:/\b(oy2[a-z0-9]{43})\b/g, minDistinct:15, strict:1},
+  {n:'RubyGems Token', r:/\b(rubygems_[a-f0-9]{48})\b/g, strict:1},
+  {n:'Doppler Token', r:/\b(dp\.st\.[a-zA-Z0-9_-]{40,})\b/g, strict:1},
+  {n:'Vault Token', r:/\b(hvs\.[a-zA-Z0-9_-]{24,})\b/g, strict:1},
+  {n:'Vault Batch Token', r:/\b(hvb\.[a-zA-Z0-9_-]{24,})\b/g, strict:1},
+  {n:'WakaTime Key', r:/\b(waka_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/g, strict:1},
+  {n:'Mapbox Token', r:/(?<![A-Za-z0-9])(pk\.[a-zA-Z0-9]{60,}\.[a-zA-Z0-9_-]{20,})(?![A-Za-z0-9])/g, strict:1},
+  {n:'Mapbox Secret', r:/(?<![A-Za-z0-9])(sk\.[a-zA-Z0-9]{60,}\.[a-zA-Z0-9_-]{20,})(?![A-Za-z0-9])/g, strict:1},
+  {n:'Cloudinary URL', r:/(cloudinary:\/\/[0-9]{10,}:[A-Za-z0-9_-]{20,}@[a-z0-9-]+)/g, strict:1},
+  {n:'Backblaze B2 Key', r:/\b(K005[A-Za-z0-9+/=]{20,})\b/g, strict:1},
+  {n:'Bitcoin WIF', r:/\b([KL][123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{51}|5[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50})\b/g, minDistinct:20, strict:1},
+  {n:'Solana Private Key', r:/\b([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{86,90})\b/g, minDistinct:30, strict:1},
+  {n:'PostgreSQL URI', r:/(postgres(?:ql)?:\/\/[^\s<>"']{10,})/g, requireSub:['@'], strict:1},
+  {n:'MySQL URI', r:/(mysql:\/\/[^\s<>"']{10,})/g, requireSub:['@'], strict:1},
+  {n:'MongoDB URI', r:/(mongodb(?:\+srv)?:\/\/[^\s<>"']{10,})/g, requireSub:['@'], strict:1},
+  {n:'AMQP URI', r:/(amqps?:\/\/[^\s<>"']{10,})/g, requireSub:['@'], strict:1},
+  {n:'JWT Token', r:/\b(eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})\b/g, minDistinct:20, v:'jwt', strict:1},
+  {n:'SSH RSA Key', r:/(-----BEGIN (?:RSA |OPENSSH |EC |ED25519 )?PRIVATE KEY-----[\s\S]+?-----END (?:RSA |OPENSSH |EC |ED25519 )?PRIVATE KEY-----)/g, strict:1},
+  {n:'PGP Private Key', r:/(-----BEGIN PGP PRIVATE KEY BLOCK-----[\s\S]+?-----END PGP PRIVATE KEY BLOCK-----)/g, strict:1},
+  {n:'EVM Private Key Bare', r:/\b(0x[0-9a-fA-F]{64})\b/g, minDistinct:10, strict:1},
+
+  // ---- context / shape-based (loose — skip on HTML) ----
+  {n:'OpenAI Legacy Key', r:/\bsk-[a-zA-Z0-9]{32,60}\b/g, minLen:35, minDistinct:15, notStart:['sk-proj-','sk-svcacct-'], v:'openai'},
+  {n:'AWS Secret Access Key', r:/(?<![A-Za-z0-9/+=])([A-Za-z0-9/+=]{40})(?![A-Za-z0-9/+=])/g, minDistinct:20, requireChars:['/','+','=']},
+  {n:'Azure SAS Token', r:/(sv=\d{4}-\d{2}-\d{2}&[a-zA-Z0-9%&=_.-]{20,})/g, requireSub:['sig=']},
+  {n:'Braintree Key', r:/(?:private_key|merchant_id|public_key)\s*[:=]\s*["']?([a-zA-Z0-9]{32,40})["']?/g, minDistinct:20},
+  {n:'Adyen API Key', r:/\b(live_[0-9a-zA-Z]{32,}_[0-9a-zA-Z]{6,})\b/g, minDistinct:20},
+  {n:'Adyen HMAC Key', r:/(?:adyen)[^a-z0-9]{0,30}hmac[^a-z0-9]{0,10}["']?([a-fA-F0-9]{32,64})["']?/gi, minDistinct:15},
+  {n:'Mollie Live Key', r:/\b(live_[a-zA-Z0-9]{30,40})\b/g, minDistinct:15},
+  {n:'Mollie Test Key', r:/\b(test_[a-zA-Z0-9]{30,40})\b/g, minDistinct:15},
+  {n:'Plaid Client ID', r:/(?:plaid)[^a-z0-9]{0,20}client[^a-z0-9]{0,5}id[^a-z0-9]{0,10}["']?([a-f0-9]{24})["']?/gi, minDistinct:12},
+  {n:'Plaid Secret', r:/(?:plaid)[^a-z0-9]{0,20}secret[^a-z0-9]{0,10}["']?([a-f0-9]{30})["']?/gi, minDistinct:12},
+  {n:'Twilio API Key', r:/\b(SK[a-f0-9]{32})\b/g},
+  {n:'Twilio Account SID', r:/\b(AC[a-f0-9]{32})\b/g},
+  {n:'Vonage API Key', r:/(?:vonage)[^a-z0-9]{0,20}api[^a-z0-9]{0,5}key[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{8})["']?/gi, minDistinct:6},
+  {n:'Facebook OAuth', r:/\b([0-9]{15,16}\|[a-zA-Z0-9_-]{27})\b/g},
+  {n:'Twitter Access Token', r:/\b([1-9][0-9]+-[0-9a-zA-Z]{40})\b/g, minDistinct:15},
+  {n:'Instagram Token', r:/\b([0-9]{10,}:[0-9a-f]{32,}:[A-Za-z0-9_-]+)\b/g},
+  {n:'LinkedIn Secret', r:/(?:linkedin)[^a-z0-9]{0,20}(?:secret|key)[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{16})["']?/gi, minDistinct:8},
+  {n:'Reddit Secret', r:/(?:reddit)[^a-z0-9]{0,20}secret[^a-z0-9]{0,10}["']?([a-zA-Z0-9_-]{27,30})["']?/gi, minDistinct:12},
+  {n:'TikTok Key', r:/(?:tiktok)[^a-z0-9]{0,20}(?:key|secret)[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{24,40})["']?/gi, minDistinct:10},
+  {n:'Snapchat Token', r:/(?:snapchat)[^a-z0-9]{0,20}token[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{64,80})["']?/gi, minDistinct:20},
+  {n:'Pinterest Token', r:/(?:pinterest)[^a-z0-9]{0,20}(?:token|key)[^a-z0-9]{0,10}["']?([a-zA-Z0-9_-]{40,60})["']?/gi, minDistinct:15},
+  {n:'Heroku API Key', r:/\b([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b/g},
+  {n:'Auth0 Token', r:/(?:auth0)[^a-z0-9]{0,20}(?:secret|token|key)[^a-z0-9]{0,10}["']?([a-zA-Z0-9_-]{32,64})["']?/gi, minDistinct:20},
+  {n:'Cloudflare API Token', r:/(?:cloudflare)[^a-z0-9]{0,20}(?:token|key)[^a-z0-9]{0,10}["']?([A-Za-z0-9_-]{40})["']?/gi, minDistinct:20},
+  {n:'Cloudflare Global Key', r:/\b([a-f0-9]{37})\b/g},
+  {n:'Upstash Token', r:/\b(AX[a-zA-Z0-9]{38,})\b/g},
+  {n:'Netlify Token', r:/(?:netlify)[^a-z0-9]{0,20}(?:token|key)[^a-z0-9]{0,10}["']?([a-zA-Z0-9_-]{40,})["']?/gi, minDistinct:20},
+  {n:'Datadog API Key', r:/(?:datadog)[^a-z0-9]{0,20}api[^a-z0-9]{0,5}key[^a-z0-9]{0,10}["']?([a-f0-9]{32})["']?/gi, minDistinct:15},
+  {n:'Datadog App Key', r:/(?:datadog)[^a-z0-9]{0,20}app[^a-z0-9]{0,5}key[^a-z0-9]{0,10}["']?([a-f0-9]{40})["']?/gi, minDistinct:15},
+  {n:'Segment Write Key', r:/(?:segment)[^a-z0-9]{0,20}write[^a-z0-9]{0,5}key[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{32})["']?/gi, minDistinct:15},
+  {n:'Amplitude Key', r:/(?:amplitude)[^a-z0-9]{0,20}(?:key|token)[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{32,40})["']?/gi, minDistinct:15},
+  {n:'Mixpanel Token', r:/(?:mixpanel)[^a-z0-9]{0,20}(?:token|key)[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{32})["']?/gi, minDistinct:15},
+  {n:'HubSpot Key', r:/(?:hubspot)[^a-z0-9]{0,20}api[^a-z0-9]{0,5}key[^a-z0-9]{0,10}["']?([a-zA-Z0-9-]{32,50})["']?/gi, minDistinct:15},
+  {n:'Intercom Token', r:/(?:intercom)[^a-z0-9]{0,20}(?:key|token)[^a-z0-9]{0,10}["']?([a-zA-Z0-9_=-]{60,80})["']?/gi, minDistinct:20},
+  {n:'CircleCI Token', r:/(?:circleci)[^a-z0-9]{0,20}token[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{40})["']?/gi, minDistinct:20},
+  {n:'Algolia API Key', r:/(?:algolia)[^a-z0-9]{0,20}(?:key|token)[^a-z0-9]{0,10}["']?([a-f0-9]{32})["']?/gi, minDistinct:15},
+  {n:'Contentful Token', r:/(?:contentful)[^a-z0-9]{0,20}token[^a-z0-9]{0,10}["']?([a-zA-Z0-9-]{43})["']?/gi, minDistinct:15},
+  {n:'Binance API Key', r:/(?:binance)[^a-z0-9]{0,20}(?:api[^a-z0-9]{0,5}key|secret)[^a-z0-9]{0,10}["']?([a-zA-Z0-9]{64})["']?/gi, minDistinct:20},
+  {n:'Infura Project ID', r:/(?:infura)[^a-z0-9]{0,20}(?:key|project|id)[^a-z0-9]{0,10}["']?([a-f0-9]{32})["']?/gi, minDistinct:15},
+  {n:'EVM Private Key', r:/(?:private[_\s-]?key|priv[_\s-]?key|PRIVATE_KEY)\s*[:=]\s*["']?(0x)?([0-9a-fA-F]{64})["']?/g, groups:[1,2], minDistinct:10},
+  {n:'Redis URI', r:/(rediss?:\/\/[^\s<>"']{10,})/g, requireSub:['@']},
+  {n:'Generic Secret', r:/(?:secret|token|credential)\s*[:=]\s*["']([^"']{24,256})["']/gi, minDistinct:15, notStart:['{','$']},
+  {n:'Generic API Key', r:/(?:api[_-]?key|apikey|api[_-]?secret)\s*[:=]\s*["']([^"']{24,256})["']/gi, minDistinct:15, notStart:['{','$']},
+  {n:'Bearer Token', r:/(?:bearer|authorization)\s*[:=]\s*["']?(?:Bearer\s+)?([a-zA-Z0-9._~+/=-]{32,})["']?/gi, minDistinct:20},
+];
+
+const CARDS = [
+  {r:/(\d{13,19})\s*[,;|]\s*(\d{1,2})[/\\|](\d{2,4})\s*[,;|]\s*(\d{3,4})/g, o:[1,2,3,4]},
+  {r:/(?:card|cc|number|pan)\s*[:=\s]+\s*(\d{13,19})\s*(?:exp|date|expiry)\s*[:=\s]+\s*(\d{1,2})[/\\|.-](\d{2,4})\s*(?:cvv|cvc|cv2|cid)\s*[:=\s]+\s*(\d{3,4})/gi, o:[1,2,3,4]},
+  {r:/\b(\d{13,19})[|,\s]+(\d{1,2})[|,\s]+(\d{2,4})[|,\s]+(\d{3,4})\b/g, o:[1,2,3,4]},
+  {r:/\b(\d{13,19})[|](\d{3,4})[|](\d{1,2})[|](\d{2,4})\b/g, o:[1,3,4,2]},
+  {r:/(\d{13,19})\s*(\d{1,2})\s*\/\s*(\d{2,4})\s*(\d{3,4})/g, o:[1,2,3,4]},
+  {r:/(\d{4})\s*(\d{4})\s*(\d{4})\s*(\d{4})\s*(\d{1,2})\s*(\d{2,4})\s*(\d{3,4})/g, c:[1,2,3,4], o:[5,6,7]},
+  {r:/(\d{13,19})\s*(\d{1,2})\s*(\d{2,4})\s*(\d{3,4})/g, o:[1,2,3,4]},
+];
+
+const sha256 = (() => {
+  const K = new Uint32Array([
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ]);
+  const H0 = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  const enc = new TextEncoder();
+  return function (str) {
+    const bytes = enc.encode(str);
+    const len = bytes.length, bitLen = len * 8;
+    const padded = new Uint8Array((len + 9 + 63) & ~63);
+    padded.set(bytes);
+    padded[len] = 0x80;
+    const view = new DataView(padded.buffer);
+    view.setUint32(padded.length - 8, Math.floor(bitLen / 0x100000000));
+    view.setUint32(padded.length - 4, bitLen >>> 0);
+    const w = new Uint32Array(64);
+    const H = new Uint32Array(H0);
+    for (let off = 0; off < padded.length; off += 64) {
+      for (let i = 0; i < 16; i++) w[i] = view.getUint32(off + i * 4);
+      for (let i = 16; i < 64; i++) {
+        const s0 = rotr(w[i-15], 7) ^ rotr(w[i-15], 18) ^ (w[i-15] >>> 3);
+        const s1 = rotr(w[i-2], 17) ^ rotr(w[i-2], 19) ^ (w[i-2] >>> 10);
+        w[i] = (w[i-16] + s0 + w[i-7] + s1) >>> 0;
+      }
+      let a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (let i = 0; i < 64; i++) {
+        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const ch = (e & f) ^ (~e & g);
+        const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e; e = (d + t1) >>> 0;
+        d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+      H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+    }
+    let hex = '';
+    for (let i = 0; i < 8; i++) hex += H[i].toString(16).padStart(8, '0');
+    return hex;
+  };
+})();
+
+function zbits(hex) {
+  let n = 0;
+  for (const c of hex) {
+    const v = parseInt(c, 16);
+    if (v === 0) { n += 4; continue; }
+    if (v < 2) n += 3; else if (v < 4) n += 2; else if (v < 8) n += 1;
+    break;
+  }
+  return n;
+}
+
+function solvePoW(html) {
+  const t = html.match(/var\s+task\s*=\s*["']([^"']+)["']\s*;/);
+  const n = html.match(/var\s+need\s*=\s*(\d+)\s*;/);
+  if (!t || !n) return null;
+  const task = t[1];
+  const need = parseInt(n[1], 10);
+  const t0 = performance.now();
+  for (let i = 0; i < 100_000_000; i++) {
+    const nonce = i.toString(36);
+    if (zbits(sha256(task + nonce)) >= need) {
+      return { token: task + '|' + nonce, tries: i, ms: performance.now() - t0 };
+    }
+  }
+  return null;
+}
+
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+let jid = 0, pool = [], WURL = '', poolReady = false, rr = 0;
+const pending = new Map();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+const humanSize = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+const rot = (a, k) => a.map((_, j) => a[(j + k) % a.length]);
+
+function kill(w) {
+  w.dead = true;
+  try { w.terminate(); } catch {}
+  for (const [id, p] of pending) if (p.w === w) { pending.delete(id); clearTimeout(p.t); p.res(null); }
+}
+
+function call(w, msg, ms) {
+  if (w.dead) return Promise.resolve(null);
+  return new Promise(res => {
+    const id = ++jid;
+    const t = setTimeout(() => { pending.delete(id); res(null); }, ms);
+    pending.set(id, { w, t, res: m => { clearTimeout(t); res(m); } });
+    try { w.postMessage({ ...msg, id }); }
+    catch { pending.delete(id); clearTimeout(t); res(null); }
+  });
+}
+
+function spawn(wisp) {
+  pool = pool.filter(w => !w.dead);
+  return new Promise(res => {
+    WURL ||= URL.createObjectURL(new Blob(['(' + workerMain + ')()'], { type: 'text/javascript' }));
+    let w;
+    let done = false;
+    const finish = val => { if (!done) { done = true; clearTimeout(t); res(val); } };
+    const t = setTimeout(() => { if (w) { w.ok = false; w.why = 'worker: timeout'; } finish(w || { ok: false, why: 'worker: timeout' }); }, 45000);
+    try { w = new Worker(WURL); } catch (e) { return finish({ ok: false, why: 'worker: ' + e.message }); }
+    Object.assign(w, { ok: false, dead: false });
+    pool.push(w);
+    w.onmessage = e => {
+      const m = e.data;
+      if (m.t === 'ready') { w.ok = m.ok; w.why = m.why; w.wisp = m.wisp; finish(w); }
+      else { const f = pending.get(m.id); if (f) { pending.delete(m.id); f.res(m); } }
+    };
+    w.onerror = e => { w.ok = false; w.why = 'load: ' + (e.message || 'worker error'); finish(w); };
+    w.postMessage({ t: 'init', lib: LIBCURL, libm: LIBCURL_M, wisp, probes: PROBES });
+  });
+}
+
+async function startPool() {
+  pool.forEach(kill); pool = [];
+  let saved = '';
+  try { saved = localStorage.getItem('DorkyLeaks_wisp') || ''; } catch {}
+  const wl = [...new Set([...WISP, saved].filter(Boolean))];
+  if (!wl.length) { setLive('bad', 'no wisp'); return { ok: false, why: 'no wisp servers configured' }; }
+  setLive('on', 'connecting');
+  const first = await spawn(wl);
+  if (!first.ok) {
+    setLive('bad', 'wisp failed');
+    return { ok: false, why: first.why || 'worker failed' };
+  }
+  try { localStorage.setItem('DorkyLeaks_wisp', first.wisp); } catch {}
+  logTo('crawlLog', '[+] wisp ok: ' + first.wisp, 'ok');
+  logTo('dorkLog', '[+] wisp ok: ' + first.wisp, 'ok');
+  await Promise.all(Array.from({ length: WORKERS - 1 }, (_, k) => spawn(rot(wl, k + 1))));
+  poolReady = true;
+  setLive('ok', 'ready');
+  return { ok: true };
+}
+
+async function httpFetch(url, opts = {}) {
+  const live = pool.filter(w => w.ok && !w.dead);
+  if (!live.length) throw new Error('no live workers');
+  const w = opts.worker || live[rr++ % live.length];
+  const m = await call(w, {
+    t: 'get', url,
+    headers: opts.headers,
+    ms: opts.ms || 25000,
+    redirect: opts.redirect,
+    cookie: opts.cookie,
+  }, (opts.ms || 25000) + 5000);
+  if (!m || m.text === undefined) throw new Error('fetch failed');
+  return {
+    status: m.status || 0,
+    text: m.text || '',
+    headers: { 'content-type': m.ct || '', 'set-cookie': m.setCookie || '' },
+    url: m.url || url,
+  };
+}
+
+const state = { findings: [], seen: new Set(), downloads: [], files: [] };
+let PATHS = [];
+
+function addFinding(type, value, source, status) {
+  const k = type + '|' + value + '|' + source;
+  if (state.seen.has(k)) return false;
+  state.seen.add(k);
+  state.findings.push({ type, value, source: source || '', status: status || 'FORMAT_VALID' });
+  return true;
+}
+
+function scanContent(content, source, opts = {}) {
+  const { strict = false } = opts;
+  const out = [];
+  if (!content) return out;
+  for (const rule of RULES) {
+    if (strict && !rule.strict) continue;
+    const re = new RegExp(rule.r.source, rule.r.flags);
+    let m;
+    while ((m = re.exec(content)) !== null) {
+      let val;
+      if (rule.groups) val = rule.groups.map(i => m[i] || '').join('');
+      else val = m[1] || m[0];
+      if (!val) continue;
+      if (looksLikeGarbage(val)) continue;
+      if (rule.minLen && val.length < rule.minLen) continue;
+      if (rule.minDistinct && distinct(val) < rule.minDistinct) continue;
+      if (rule.requireChars && !rule.requireChars.some(c => val.includes(c))) continue;
+      if (rule.requireSub && !rule.requireSub.every(s => val.includes(s))) continue;
+      if (rule.notStart && rule.notStart.some(s => val.startsWith(s))) continue;
+      if (rule.notEnd && rule.notEnd.some(s => val.endsWith(s))) continue;
+      if (rule.blacklist && rule.blacklist.includes(val.toLowerCase())) continue;
+      if (hasPH(val)) continue;
+      out.push({ type: rule.n, value: val, source: source || '', status: 'FORMAT_VALID', v: rule.v });
+    }
+  }
+  for (const c of CARDS) {
+    const re = new RegExp(c.r.source, c.r.flags);
+    let m;
+    while ((m = re.exec(content)) !== null) {
+      try {
+        let cn, mo, yr, cvv;
+        if (c.c) { cn = c.c.map(g => m[g]).join(''); mo = m[c.o[0]]; yr = m[c.o[1]]; cvv = m[c.o[2]]; }
+        else { cn = m[c.o[0]]; mo = m[c.o[1]]; yr = m[c.o[2]]; cvv = m[c.o[3]]; }
+        if (!luhn(cn)) continue;
+        if (!/^\d{3,4}$/.test(cvv)) continue;
+        const mm = parseInt(mo, 10);
+        if (mm < 1 || mm > 12) continue;
+        const yy = yr.length === 2 ? parseInt('20' + yr, 10) : parseInt(yr, 10);
+        const now = new Date();
+        if (new Date(yy, mm - 1, 1) < new Date(now.getFullYear(), now.getMonth(), 1)) continue;
+        out.push({ type: 'Credit Card', value: `${cn}|${String(mm).padStart(2,'0')}|${String(yy).slice(-2)}|${cvv}`, source: source || '', status: 'FORMAT_VALID' });
+      } catch {}
+    }
+  }
+  return out;
+}
+
+function luhn(c) {
+  if (!/^\d{13,19}$/.test(c)) return false;
+  const d = c.split('').map(Number); let s = 0;
+  for (let i = 0; i < d.length; i++) {
+    let x = d[i];
+    if ((d.length - 1 - i) % 2 === 1) { x *= 2; if (x > 9) x -= 9; }
+    s += x;
+  }
+  return s % 10 === 0;
+}
+
+function extractLinks(html, base) {
+  const out = new Set();
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('a[href],script[src],link[href],iframe[src],img[src],form[action]').forEach(el => {
+      const href = el.getAttribute('href') || el.getAttribute('src') || el.getAttribute('action');
+      if (!href) return;
+      try { out.add(new URL(href, base).href.split('#')[0]); } catch {}
+    });
+  } catch {}
+  return [...out];
+}
+
+function shouldSave(url, ct) {
+  ct = (ct || '').split(';')[0].trim().toLowerCase();
+  if (ct === 'text/html' || ct === 'application/xhtml+xml') return false;
+  const okCt = ['application/pdf','application/zip','application/x-tar','application/gzip','application/octet-stream','application/x-7z-compressed','application/x-rar-compressed','application/x-sqlite3','application/x-sql','application/sql','application/x-httpd-php','application/x-sh','application/x-python','application/msword','application/vnd.ms-excel','application/x-pkcs12','application/x-pem-file','application/pkix-cert','application/x-java-keystore','application/x-msdownload'];
+  if (okCt.some(p => ct.startsWith(p))) return true;
+  const ext = url.split('?')[0].split('.').pop().toLowerCase();
+  const okExt = ['env','sql','bak','backup','zip','tar','gz','tgz','7z','rar','pdf','csv','xml','json','yml','yaml','toml','ini','conf','cfg','pem','key','crt','cer','p12','pfx','jks','keystore','log','txt','properties','tfstate','tfvars','tf','hcl','db','sqlite','sqlite3','dump','ppk','ovpn','rdp','kdbx','sh','py','rb','js','ts','php','pl','ps1','bat','htpasswd','npmrc','pypirc','netrc','pgpass'];
+  return okExt.includes(ext);
+}
+
+function downloadBlob(name, content) {
+  try {
+    const blob = new Blob([content]);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+    state.downloads.push({ name, size: content.length || content.byteLength || 0 });
+  } catch {}
+}
+
+let abortFlag = false, pausedFlag = false, resumeWaiters = [];
+const waitResume = () => pausedFlag ? new Promise(r => resumeWaiters.push(r)) : Promise.resolve();
+function setPaused(p) {
+  pausedFlag = p;
+  $('prog').classList.toggle('paused', p);
+  $('pauseBtn').textContent = p ? 'Resume' : 'Pause';
+  if (!p) { const w = resumeWaiters; resumeWaiters = []; w.forEach(fn => fn()); }
+}
+
+async function crawlSite(base, opts) {
+  const { doCrawl = true, doProbe = true, doDl = true, logId = 'crawlLog', skipLoose = true } = opts || {};
+  const log = (m, c) => logTo(logId, m, c);
+
+  let domain, origin;
+  try { const u = new URL(base); domain = u.hostname; origin = u.protocol + '//' + u.host; }
+  catch { log('[x] invalid url: ' + base, 'bad'); return { files: 0, hits: 0, probed: 0 }; }
+
+  const visited = new Set();
+  const queue = [base];
+  if (doProbe) for (const p of HIGH_VALUE) queue.push(origin + (p.startsWith('/') ? p : '/' + p));
+  let savedFiles = 0, hitPaths = 0, probedPaths = 0;
+
+  log('→ ' + base, 'ok');
+
+  while (queue.length && visited.size < CRAWL_MAX && !abortFlag) {
+    if (pausedFlag) { await waitResume(); continue; }
+    const batch = [];
+    while (queue.length && batch.length < CRAWL_CONC && visited.size + batch.length < CRAWL_MAX) {
+      const u = queue.shift();
+      const norm = u.split('#')[0].split('?')[0].replace(/\/$/, '');
+      if (visited.has(norm)) continue;
+      visited.add(norm);
+      batch.push(u);
+    }
+    if (!batch.length) break;
+    const results = await Promise.allSettled(batch.map(u => httpFetch(u)));
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i], u = batch[i];
+      if (r.status !== 'fulfilled') continue;
+      const res = r.value;
+      if (res.status >= 400) continue;
+      const ct = res.headers['content-type'] || '';
+      const isHtml = /html/i.test(ct) || looksLikeHtml(res.text);
+      const isText = /text|json|xml|javascript|yaml/i.test(ct) || (!ct && res.text.length < 500000);
+      if (isText) {
+        const found = scanContent(res.text, u, { strict: skipLoose && isHtml });
+        for (const f of found) {
+          if (addFinding(f.type, f.value, u, f.status)) log('★ ' + f.type + ' → ' + u, 'ok');
+        }
+      }
+      if (doDl && shouldSave(u, ct) && res.text.length < MAX_FILE) {
+        const safe = (new URL(u).hostname + new URL(u).pathname).replace(/[^a-z0-9._/-]/gi, '_');
+        downloadBlob(safe, res.text);
+        savedFiles++;
+        log('▼ ' + u + ' (' + humanSize(res.text.length) + ')', 'ok');
+      }
+      if (doCrawl && /html/i.test(ct)) {
+        for (const l of extractLinks(res.text, u)) {
+          try {
+            if (new URL(l).hostname === domain) {
+              const norm = l.split('#')[0].split('?')[0].replace(/\/$/, '');
+              if (!visited.has(norm)) queue.push(l);
+            }
+          } catch {}
+        }
+      }
+    }
+    updateProgress(Math.min(100, (visited.size / CRAWL_MAX) * 100), `crawl ${visited.size}/${CRAWL_MAX} · ${state.findings.length} findings`);
+    await sleep(15);
+  }
+
+  if (doProbe && !abortFlag && PATHS.length) {
+    log('probing ' + PATHS.length + ' paths…', 'ok');
+    const targets = [];
+    for (const p of PATHS) {
+      const path = p.startsWith('/') ? p : '/' + p;
+      const u = origin + path;
+      const norm = u.split('#')[0].split('?')[0].replace(/\/$/, '');
+      if (visited.has(norm)) continue;
+      visited.add(norm);
+      targets.push(u);
+    }
+    targets.sort((a, b) => {
+      const ah = HIGH_VALUE.some(h => a.includes(h)) ? 1 : 0;
+      const bh = HIGH_VALUE.some(h => b.includes(h)) ? 1 : 0;
+      return bh - ah;
+    });
+    let idx = 0;
+    const worker = async () => {
+      while (idx < targets.length && !abortFlag) {
+        if (pausedFlag) { await waitResume(); continue; }
+        const u = targets[idx++];
+        probedPaths++;
+        try {
+          const res = await httpFetch(u, { redirect: 'manual' });
+          if ([200,201,203,206,301,302,307,308,401,403].includes(res.status)) {
+            hitPaths++;
+            const ct = res.headers['content-type'] || '';
+            const isHtml = /html/i.test(ct) || looksLikeHtml(res.text);
+            const isText = /text|json|xml|javascript|yaml/i.test(ct);
+            if (isText) {
+              const found = scanContent(res.text, u, { strict: skipLoose && isHtml });
+              for (const f of found) {
+                if (addFinding(f.type, f.value, u, f.status)) log('★ ' + f.type + ' → ' + u, 'ok');
+              }
+            }
+            if (doDl && shouldSave(u, ct)) {
+              const safe = (new URL(u).hostname + new URL(u).pathname).replace(/[^a-z0-9._/-]/gi, '_');
+              downloadBlob(safe, res.text);
+              savedFiles++;
+              log('▼ ' + res.status + ' ' + u, 'ok');
+            } else {
+              log('· ' + res.status + ' ' + u);
+            }
+          }
+        } catch {}
+        if (probedPaths % 25 === 0) {
+          updateProgress(50 + (probedPaths / targets.length) * 50, `${probedPaths}/${targets.length} probed · ${hitPaths} hits · ${state.findings.length} findings`);
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: PROBE_CONC }, worker));
+  }
+
+  return { files: savedFiles, hits: hitPaths, probed: probedPaths };
+}
+
+async function publicwwwSearch(query, maxUrls, logId = 'dorkLog') {
+  const log = (m, c) => logTo(logId, m, c);
+  log('→ query: ' + query, 'ok');
+
+  const live = pool.filter(w => w.ok && !w.dead);
+  if (!live.length) { log('no live workers', 'bad'); return []; }
+
+  const worker = live[0];
+  const UA = ua();
+  const baseHeaders = {
+    'User-Agent': UA,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Referer': 'https://publicwww.com/',
+  };
+
+  let cookieHeader = '';
+
+  const fetchPinned = (url, extra = {}) => {
+    const headers = { ...baseHeaders, ...(extra.headers || {}) };
+    if (cookieHeader) headers.Cookie = headers.Cookie ? headers.Cookie + '; ' + cookieHeader : cookieHeader;
+    return httpFetch(url, { ...extra, worker, headers });
+  };
+
+  const q = encodeURIComponent(query).replace(/%2F/g, '/');
+  const landing = 'https://publicwww.com/websites/' + q + '/';
+  const exportUrl = 'https://publicwww.com/websites/' + q + '/?export=urls';
+
+  const isResults = t =>
+    /-\s*\d[\d,]*\s*Web pages\s*-\s*PublicWWW\.com/i.test(t) ||
+    /Examples of sites using/i.test(t) ||
+    /<table[^>]*class=["']?[^"'>]*\btable\b/i.test(t);
+
+  let r = await fetchPinned(landing);
+  log('landing · ' + r.status + ' · ' + r.text.length + ' bytes', r.status === 200 ? 'ok' : 'bad');
+  if (r.status !== 200) return [];
+
+  if (!isResults(r.text)) {
+    log('solving PoW…', 'warn');
+    const solved = solvePoW(r.text);
+    if (!solved) { log('PoW failed', 'bad'); return []; }
+    log(`PoW solved: nonce=${solved.token.split('|')[1]} tries=${solved.tries} (${(solved.ms / 1000).toFixed(2)}s)`, 'ok');
+
+    cookieHeader = '_t=' + encodeURIComponent(solved.token);
+
+    r = await fetchPinned(landing);
+    log('retry · ' + r.status + ' · ' + r.text.length + ' bytes', r.status === 200 ? 'ok' : 'bad');
+    if (r.status !== 200) return [];
+
+    if (!isResults(r.text)) {
+      const snippet = (r.text || '').replace(/\s+/g, ' ').slice(0, 300);
+      log('retry still not results · ' + snippet, 'bad');
+      return [];
+    }
+    log('results reached', 'ok');
+  }
+
+  log('fetching export…', 'ok');
+  let ex = await fetchPinned(exportUrl, { headers: { Accept: 'text/plain' } });
+  log('export · ' + ex.status + ' · ' + ex.text.length + ' bytes', ex.status === 200 ? 'ok' : 'bad');
+  if (ex.status !== 200) return [];
+
+  let lines = ex.text.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
+
+  if (!lines.length && !isResults(ex.text)) {
+    log('PoW on export page…', 'warn');
+    const solved = solvePoW(ex.text);
+    if (!solved) { log('PoW failed on export', 'bad'); return []; }
+    log(`PoW solved: nonce=${solved.token.split('|')[1]} tries=${solved.tries} (${(solved.ms / 1000).toFixed(2)}s)`, 'ok');
+    cookieHeader = '_t=' + encodeURIComponent(solved.token);
+    ex = await fetchPinned(exportUrl, { headers: { Accept: 'text/plain' } });
+    log('export retry · ' + ex.status + ' · ' + ex.text.length + ' bytes', 'ok');
+    lines = ex.text.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
+  }
+
+  if (!lines.length) {
+    const snippet = (ex.text || '').replace(/\s+/g, ' ').slice(0, 200);
+    log('no URL lines · ' + snippet, 'warn');
+  }
+
+  const out = [], seen = new Set();
+  for (const line of lines) {
+    try {
+      const u = new URL(line);
+      let host = u.hostname.toLowerCase();
+      if (host.startsWith('www.')) host = host.slice(4);
+      if (!seen.has(host)) { seen.add(host); out.push('https://' + host); }
+      if (out.length >= maxUrls) break;
+    } catch {}
+  }
+  log('exported ' + out.length + ' domains', out.length ? 'ok' : 'warn');
+  return out;
+}
+
+function setLive(s, txt) {
+  $('live').className = 'live' + (s ? ' ' + s : '');
+  $('liveTxt').textContent = txt;
+}
+
+function updateProgress(pct, txt) {
+  $('prog').classList.add('show');
+  $('fill').style.width = Math.max(0, Math.min(100, pct)) + '%';
+  $('ppct').textContent = Math.round(pct) + '%';
+  if (txt) $('ptxt').textContent = txt;
+}
+
+function logTo(id, msg, cls) {
+  const el = $(id);
+  if (!el) return;
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  while (el.childNodes.length > 400) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+
+function toast(m) {
+  const t = $('toast');
+  t.textContent = m;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+$$('#seg button').forEach(b => b.addEventListener('click', () => {
+  $$('#seg button').forEach(x => x.classList.toggle('on', x === b));
+  $$('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab-' + b.dataset.tab));
+  if (b.dataset.tab === 'results') renderResults();
+}));
+
+let runningTask = false;
+
+$('crawlGo').addEventListener('click', async () => {
+  const url = $('crawlUrl').value.trim();
+  if (!url) { toast('enter a url'); return; }
+  if (runningTask) { toast('busy'); return; }
+  if (!poolReady) { toast('workers not ready'); return; }
+  runningTask = true;
+  abortFlag = false;
+  setPaused(false);
+  setLive('on', 'crawling');
+  $('crawlLog').innerHTML = '';
+  $('crawlGo').disabled = true;
+  $('crawlGo').innerHTML = '<span class="spin"></span>running';
+  $('pauseBtn').disabled = false;
+  $('stopBtn').disabled = false;
+  try {
+    const stats = await crawlSite(url, {
+      doCrawl: $('optCrawl').checked,
+      doProbe: $('optProbe').checked,
+      doDl: $('optDl').checked,
+      skipLoose: $('optStrict').checked,
+    });
+    logTo('crawlLog', `done · probed ${stats.probed} · hits ${stats.hits} · files ${stats.files} · findings ${state.findings.length}`, 'ok');
+    toast(stats.hits + ' hits');
+  } catch (e) {
+    logTo('crawlLog', 'fatal: ' + e.message, 'bad');
+  }
+  runningTask = false;
+  setLive('ok', 'ready');
+  $('crawlGo').disabled = false;
+  $('crawlGo').textContent = 'Start crawl';
+  $('pauseBtn').disabled = true;
+  $('stopBtn').disabled = true;
+  setTimeout(() => { if (!runningTask) { $('prog').classList.remove('show'); $('fill').style.width = '0%'; } }, 3500);
+  renderResults();
+});
+
+$('dorkGo').addEventListener('click', async () => {
+  const query = $('dorkQ').value.trim();
+  if (!query) { toast('enter a query'); return; }
+  if (runningTask) { toast('busy'); return; }
+  if (!poolReady) { toast('workers not ready'); return; }
+  const max = Math.max(1, Math.min(5000, parseInt($('dorkMax').value, 10) || 100));
+  runningTask = true;
+  abortFlag = false;
+  setPaused(false);
+  setLive('on', 'dorking');
+  $('dorkLog').innerHTML = '';
+  $('dorkGo').disabled = true;
+  $('dorkGo').innerHTML = '<span class="spin"></span>running';
+  $('pauseBtn').disabled = false;
+  $('stopBtn').disabled = false;
+  try {
+    const urls = await publicwwwSearch(query, max);
+    if (!urls.length) { logTo('dorkLog', 'no urls', 'bad'); }
+    else {
+      logTo('dorkLog', 'crawling ' + urls.length + ' urls…', 'ok');
+      for (let i = 0; i < urls.length; i++) {
+        if (abortFlag) { logTo('dorkLog', 'stopped', 'warn'); break; }
+        logTo('dorkLog', '[' + (i+1) + '/' + urls.length + '] ' + urls[i], 'ok');
+        await crawlSite(urls[i], {
+          doCrawl: $('dorkCrawl').checked,
+          doProbe: $('dorkProbe').checked,
+          doDl: $('optDl').checked,
+          skipLoose: $('optStrict2').checked,
+          logId: 'dorkLog',
+        });
+        updateProgress(((i+1)/urls.length)*100, `dork ${i+1}/${urls.length} · ${state.findings.length} findings`);
+      }
+      logTo('dorkLog', 'done · ' + state.findings.length + ' total findings', 'ok');
+    }
+  } catch (e) {
+    logTo('dorkLog', 'fatal: ' + e.message, 'bad');
+  }
+  runningTask = false;
+  setLive('ok', 'ready');
+  $('dorkGo').disabled = false;
+  $('dorkGo').textContent = 'Run dork';
+  $('pauseBtn').disabled = true;
+  $('stopBtn').disabled = true;
+  setTimeout(() => { if (!runningTask) { $('prog').classList.remove('show'); $('fill').style.width = '0%'; } }, 3500);
+  renderResults();
+});
+
+$('pauseBtn').addEventListener('click', () => setPaused(!pausedFlag));
+$('stopBtn').addEventListener('click', () => {
+  abortFlag = true;
+  logTo('crawlLog', 'stop requested', 'warn');
+  logTo('dorkLog', 'stop requested', 'warn');
+});
+
+const fileInput = $('fileInput'), drop = $('drop'), fileList = $('fileList');
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+function handleFiles(list) {
+  for (const f of list) {
+    const reader = new FileReader();
+    reader.onload = ev => { state.files.push({ name: f.name, size: f.size, content: ev.target.result }); renderFiles(); };
+    reader.readAsText(f);
+  }
+  fileInput.value = '';
+}
+function renderFiles() {
+  if (!state.files.length) { fileList.innerHTML = ''; return; }
+  fileList.innerHTML = state.files.map((f, i) =>
+    `<div class="card" data-i="${i}"><div class="fl">📄</div><div class="mid"><div class="ad">${esc(f.name)}</div><div class="sub">${humanSize(f.size)}</div></div><div class="rt"><span class="tag">file</span></div></div>`
+  ).join('');
+  fileList.querySelectorAll('.card').forEach(c => c.addEventListener('click', () => { state.files.splice(+c.dataset.i, 1); renderFiles(); }));
+}
+$('clearFiles').addEventListener('click', () => { state.files = []; renderFiles(); toast('cleared'); });
+$('scanFiles').addEventListener('click', () => {
+  if (!state.files.length) { toast('nothing to scan'); return; }
+  for (const f of state.files) {
+    const found = scanContent(f.content, f.name, { strict: false });
+    for (const x of found) addFinding(x.type, x.value, x.source, x.status);
+  }
+  renderResults();
+  $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.tab === 'results'));
+  $$('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab-results'));
+  toast('found ' + state.findings.length);
+});
+
+function loadPaths() {
+  const stored = localStorage.getItem('DorkyLeaks_paths');
+  const src = stored || DEFAULT_PATHS;
+  PATHS = src.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  $('pathsEditor').value = src;
+  $('pathsCount').textContent = PATHS.length + ' paths loaded';
+}
+$('pathsSave').addEventListener('click', () => {
+  const v = $('pathsEditor').value;
+  localStorage.setItem('DorkyLeaks_paths', v);
+  PATHS = v.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  $('pathsCount').textContent = PATHS.length + ' paths loaded';
+  toast('saved ' + PATHS.length);
+});
+$('pathsReset').addEventListener('click', () => {
+  localStorage.removeItem('DorkyLeaks_paths');
+  loadPaths();
+  toast('reset');
+});
+
+function renderResults() {
+  const f = state.findings;
+  const body = $('resultsBody');
+  if (!f.length) {
+    body.innerHTML = '<div class="empty"><div class="g">◇</div>No findings yet</div>';
+    return;
+  }
+  const groups = {};
+  for (const x of f) (groups[x.type] = groups[x.type] || []).push(x);
+  const types = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+  let html = '<div class="stat-grid">'
+    + '<div class="stat"><div class="n">' + f.length + '</div><div class="l">findings</div></div>'
+    + '<div class="stat"><div class="n">' + types.length + '</div><div class="l">types</div></div>'
+    + '<div class="stat"><div class="n">' + state.downloads.length + '</div><div class="l">downloads</div></div>'
+    + '</div>';
+  for (const t of types) {
+    html += '<div class="group"><div class="gh"><h4>' + esc(t) + '</h4><span class="c">' + groups[t].length + '</span></div><div class="list">';
+    for (const x of groups[t].slice(0, 200)) {
+      const disp = x.value.length > 90 ? x.value.slice(0, 45) + '…' + x.value.slice(-25) : x.value;
+      const cls = x.status === 'VALIDATED' ? 'tag valid' : x.status === 'INVALID' ? 'tag invalid' : (t === 'Credit Card' ? 'tag crit' : 'tag');
+      html += '<div class="card" data-v="' + esc(x.value) + '"><div class="fl">' + (t === 'Credit Card' ? '💳' : '🔑') + '</div>'
+        + '<div class="mid"><div class="ad">' + esc(disp) + '</div>'
+        + (x.source ? '<div class="sub">' + esc(x.source) + '</div>' : '')
+        + '</div><div class="rt"><span class="' + cls + '">' + x.status + '</span></div></div>';
+    }
+    if (groups[t].length > 200) html += '<div class="card"><div class="mid"><div class="ad">…and ' + (groups[t].length - 200) + ' more</div></div></div>';
+    html += '</div></div>';
+  }
+  body.innerHTML = html;
+  body.querySelectorAll('.card[data-v]').forEach(c => c.addEventListener('click', () => {
+    try { navigator.clipboard.writeText(c.dataset.v); } catch {}
+    toast('copied');
+  }));
+}
+
+$('exportJson').addEventListener('click', () => {
+  const payload = { findings: state.findings, downloads: state.downloads, generated: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'DorkyLeaks_' + Date.now() + '.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('exportTxt').addEventListener('click', () => {
+  let out = '=== DorkyLeaks REPORT ===\n' + new Date().toISOString() + '\n\n';
+  const groups = {};
+  for (const x of state.findings) (groups[x.type] = groups[x.type] || []).push(x);
+  for (const t of Object.keys(groups).sort()) {
+    out += '--- ' + t + ' (' + groups[t].length + ') ---\n';
+    for (const x of groups[t]) {
+      out += '  ' + x.value + ' [' + x.status + ']\n';
+      if (x.source) out += '    source: ' + x.source + '\n';
+    }
+    out += '\n';
+  }
+  const blob = new Blob([out], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'DorkyLeaks_' + Date.now() + '.txt';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('clearResults').addEventListener('click', () => {
+  state.findings = [];
+  state.seen.clear();
+  state.downloads = [];
+  renderResults();
+  toast('cleared');
+});
+
+loadPaths();
+renderFiles();
+renderResults();
+logTo('crawlLog', 'starting workers…');
+logTo('dorkLog', 'starting workers…');
+setLive('on', 'connecting');
+(async () => {
+  const r = await startPool();
+  if (!r.ok) {
+    logTo('crawlLog', '[x] ' + r.why, 'bad');
+    logTo('crawlLog', '[i] add ?wisp=wss://yourserver/ to the URL to use your own relay', 'warn');
+    logTo('dorkLog', '[x] ' + r.why, 'bad');
+  } else {
+    logTo('crawlLog', '[+] ready (' + WORKERS + ' workers)', 'ok');
+    logTo('dorkLog', '[+] ready (' + WORKERS + ' workers)', 'ok');
+  }
+})();
+</script>
+</body></html>
